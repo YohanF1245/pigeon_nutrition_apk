@@ -55,7 +55,11 @@ class _AlimentsScreenState extends State<AlimentsScreen> {
       final nouvelAliment = await AlimentDialog.show(context, aliment: aliment);
       if (nouvelAliment != null) {
         try {
-          await _alimentService.insertAliment(nouvelAliment);
+          if (aliment != null) {
+            await _alimentService.updateAliment(nouvelAliment);
+          } else {
+            await _alimentService.insertAliment(nouvelAliment);
+          }
           if (!mounted) return;
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(content: Text('Aliment enregistré avec succès')),
@@ -226,62 +230,89 @@ class _AjustementStockDialogState extends State<AjustementStockDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return AlertDialog(
-      title: const Text('Ajuster le stock'),
-      content: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            'Stock actuel: ${widget.aliment.quantiteStock} ${widget.aliment.uniteSecondaire ?? widget.aliment.unite.symbole}',
-          ),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              const Text('Opération:'),
-              const SizedBox(width: 8),
-              ChoiceChip(
-                label: const Text('Ajouter'),
-                selected: _isAddition,
-                onSelected: (selected) {
-                  if (selected) setState(() => _isAddition = true);
-                },
+    return Dialog(
+      child: Container(
+        padding: const EdgeInsets.all(16),
+        width: MediaQuery.of(context).size.width * 0.9,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Ajuster le stock',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
               ),
-              const SizedBox(width: 8),
-              ChoiceChip(
-                label: const Text('Retirer'),
-                selected: !_isAddition,
-                onSelected: (selected) {
-                  if (selected) setState(() => _isAddition = false);
-                },
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          TextFormField(
-            controller: _controller,
-            decoration: InputDecoration(
-              labelText: 'Quantité à ${_isAddition ? 'ajouter' : 'retirer'}',
-              suffixText: widget.aliment.uniteSecondaire ?? widget.aliment.unite.symbole,
             ),
-            keyboardType: TextInputType.number,
-          ),
-        ],
+            const SizedBox(height: 16),
+            Text(
+              'Stock actuel: ${widget.aliment.getStockDisplay()}',
+              style: const TextStyle(fontSize: 16),
+            ),
+            const SizedBox(height: 24),
+            const Text('Opération:', style: TextStyle(fontSize: 16)),
+            const SizedBox(height: 8),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.start,
+              children: [
+                ChoiceChip(
+                  label: const Text('Ajouter'),
+                  selected: _isAddition,
+                  onSelected: (selected) {
+                    if (selected) setState(() => _isAddition = true);
+                  },
+                ),
+                const SizedBox(width: 16),
+                ChoiceChip(
+                  label: const Text('Retirer'),
+                  selected: !_isAddition,
+                  onSelected: (selected) {
+                    if (selected) setState(() => _isAddition = false);
+                  },
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+            TextFormField(
+              controller: _controller,
+              decoration: InputDecoration(
+                labelText: 'Quantité à ${_isAddition ? 'ajouter' : 'retirer'}',
+                suffixText: widget.aliment.unitePortionLabel ?? widget.aliment.unite.symbole,
+                border: const OutlineInputBorder(),
+              ),
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            ),
+            const SizedBox(height: 24),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                TextButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('Annuler'),
+                ),
+                const SizedBox(width: 16),
+                ElevatedButton(
+                  onPressed: () {
+                    final quantite = double.tryParse(_controller.text);
+                    if (quantite != null && quantite > 0) {
+                      Navigator.pop(context, _isAddition ? quantite : -quantite);
+                    } else {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Veuillez entrer une quantité valide'),
+                          backgroundColor: Colors.red,
+                        ),
+                      );
+                    }
+                  },
+                  child: const Text('Valider'),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
-      actions: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          child: const Text('Annuler'),
-        ),
-        TextButton(
-          onPressed: () {
-            final quantite = double.tryParse(_controller.text);
-            if (quantite != null) {
-              Navigator.pop(context, _isAddition ? quantite : -quantite);
-            }
-          },
-          child: const Text('Valider'),
-        ),
-      ],
     );
   }
 } 

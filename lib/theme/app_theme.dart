@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 
 class AppTheme {
-  static const Color primaryBlue = Color(0xFF2E5090);
+  static const Color primaryBlue = Color(0xFF4B89DC);
   static const Color secondaryBlue = Color(0xFF4267B2);
-  static const Color lightBlue = Color(0xFFE7F0FF);
-  static const Color darkBlue = Color(0xFF1C3359);
+  static const Color lightBlue = Color(0xFFE6EEFF);
+  static const Color darkBlue = Color(0xFF2C3E50);
   static const Color accentBlue = Color(0xFF00B4D8);
 
   static ThemeData get theme => ThemeData(
@@ -13,15 +13,22 @@ class AppTheme {
       seedColor: primaryBlue,
       primary: primaryBlue,
       secondary: secondaryBlue,
-      surface: lightBlue,
-      background: Colors.white,
+      surface: Colors.white,
+      background: lightBlue,
     ),
+    scaffoldBackgroundColor: lightBlue,
     appBarTheme: const AppBarTheme(
       backgroundColor: primaryBlue,
       foregroundColor: Colors.white,
       elevation: 0,
     ),
+    bottomNavigationBarTheme: const BottomNavigationBarThemeData(
+      backgroundColor: primaryBlue,
+      selectedItemColor: Colors.white,
+      unselectedItemColor: Colors.white70,
+    ),
     cardTheme: CardThemeData(
+      color: Colors.white,
       elevation: 2,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(12),

@@ -209,18 +209,21 @@ class _ListeAlimentsScreenState extends State<ListeAlimentsScreen> {
                 final nouvelAliment = Aliment(
                   id: _uuid.v4(),
                   nom: _nom,
+                  description: '',
+                  gestionStock: true,
+                  quantiteStock: _quantiteStock,
+                  seuilAlerte: _seuilAlerte,
+                  unite: _unite,
+                  uniteSecondaire: _uniteConversion,
+                  facteurConversion: _facteurConversion,
+                  quantiteAchatParDefaut: _quantiteAchat.toDouble(),
+                  decrementationJournaliere: _autoDecrease ? _quantiteJournaliere : null,
+                  calories: 0,
                   proteines: _proteines,
                   lipides: _lipides,
                   glucides: _glucides,
                   fibres: _fibres,
-                  quantiteStock: _quantiteStock,
-                  unite: _unite,
-                  uniteConversion: _uniteConversion,
-                  facteurConversion: _facteurConversion,
-                  autoDecrease: _autoDecrease,
-                  quantiteJournaliere: _quantiteJournaliere,
-                  seuilAlerte: _seuilAlerte,
-                  quantiteAchat: _quantiteAchat,
+                  prixUnitaire: 0,
                 );
                 await _storageService.addAliment(nouvelAliment);
                 await _chargerAliments();
@@ -257,15 +260,15 @@ class _ListeAlimentsScreenState extends State<ListeAlimentsScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text('Stock: ${aliment.quantiteStock} ${aliment.unite}'),
-                  if (aliment.uniteConversion != null)
-                    Text('Conversion: 1 ${aliment.uniteConversion} = ${aliment.facteurConversion}${aliment.unite}'),
+                  if (aliment.uniteSecondaire != null)
+                    Text('Conversion: 1 ${aliment.uniteSecondaire} = ${aliment.facteurConversion}${aliment.unite}'),
                   Text('Protéines: ${aliment.proteines}g/100g'),
                   Text('Lipides: ${aliment.lipides}g/100g'),
                   Text('Glucides: ${aliment.glucides}g/100g'),
-                  if (aliment.autoDecrease)
-                    Text('Consommation journalière: ${aliment.quantiteJournaliere} ${aliment.uniteConversion ?? aliment.unite}'),
+                  if (aliment.decrementationJournaliere != null)
+                    Text('Consommation journalière: ${aliment.decrementationJournaliere} ${aliment.uniteSecondaire ?? aliment.unite}'),
                   Text('Seuil d\'alerte: ${aliment.seuilAlerte} ${aliment.unite}'),
-                  Text('Quantité par achat: ${aliment.quantiteAchat} ${aliment.uniteConversion ?? aliment.unite}'),
+                  Text('Quantité par achat: ${aliment.quantiteAchatParDefaut} ${aliment.uniteSecondaire ?? aliment.unite}'),
                 ],
               ),
               trailing: Row(

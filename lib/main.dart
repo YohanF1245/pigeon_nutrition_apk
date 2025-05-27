@@ -1,46 +1,35 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/foundation.dart';
-import 'package:sqflite_common_ffi/sqflite_ffi.dart';
-import 'package:sqflite/sqflite.dart';
-import 'package:sqflite_common_ffi_web/sqflite_ffi_web.dart';
-import 'services/aliment_service.dart';
+import 'package:logging/logging.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'services/background_service.dart';
 import 'screens/dashboard_screen.dart';
 import 'screens/aliments_screen.dart';
 import 'screens/repas_screen.dart';
 import 'screens/entrainements_screen.dart';
 import 'screens/mesures_screen.dart';
 import 'screens/parametres_nutritionnels_screen.dart';
+import 'screens/liste_courses_screen.dart';
+import 'theme/app_theme.dart';
 
 void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  
+  // Configuration du logger
+  Logger.root.level = Level.ALL;
+  Logger.root.onRecord.listen((record) {
+    debugPrint('${record.level.name}: ${record.time}: ${record.message}');
+  });
+  
+  final logger = Logger('main');
   try {
-    print('Démarrage de l\'application...');
-    WidgetsFlutterBinding.ensureInitialized();
-    print('Flutter binding initialisé');
-
-    // Initialisation de SQLite selon la plateforme
-    if (kIsWeb) {
-      print('Configuration SQLite pour le web...');
-      databaseFactory = databaseFactoryFfiWeb;
-      print('Factory SQLite web configurée');
-    } else {
-      print('Configuration SQLite pour Android...');
-      sqfliteFfiInit();
-      print('SQLite Android initialisé');
-    }
-
-    // Initialisation du service
-    print('Initialisation du service Aliment...');
-    final alimentService = AlimentService();
-    await alimentService.initialize();
-    print('Service Aliment initialisé');
-
-    print('Lancement de l\'application...');
+    logger.info('Démarrage de l\'application...');
+    
+    // Initialiser le service en arrière-plan
+    await BackgroundService.initialize();
+    
     runApp(const MyApp());
-    print('Application lancée');
-  } catch (e, stackTrace) {
-    print('Erreur lors du démarrage: $e');
-    print('Stack trace: $stackTrace');
-    rethrow;
+  } catch (e) {
+    logger.severe('Erreur lors du démarrage de l\'application: $e');
   }
 }
 
@@ -51,13 +40,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'Pigeon Nutrition',
-      theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF3B5998), // Bleu Facebook-like
-          brightness: Brightness.light,
-        ),
-        useMaterial3: true,
-      ),
+      theme: AppTheme.theme,
       home: const MainScreen(),
     );
   }
@@ -72,81 +55,99 @@ class MainScreen extends StatefulWidget {
 
 class _MainScreenState extends State<MainScreen> {
   int _selectedIndex = 0;
+  bool _showListeCourses = false;
 
-  final List<({Widget screen, String title, IconData icon})> _screens = [
-    (
-      screen: const DashboardScreen(),
-      title: 'Tableau de bord',
-      icon: Icons.dashboard,
+  final List<Widget> _screens = [
+    const DashboardScreen(),
+    const AlimentsScreen(),
+    const RepasScreen(),
+    const EntrainementsScreen(),
+    const MesuresScreen(),
+  ];
+
+  final List<BottomNavigationBarItem> _bottomNavItems = [
+    const BottomNavigationBarItem(
+      icon: Icon(Icons.dashboard),
+      label: 'Tableau de bord',
     ),
-    (
-      screen: const AlimentsScreen(),
-      title: 'Aliments',
-      icon: Icons.food_bank,
+    const BottomNavigationBarItem(
+      icon: Icon(Icons.food_bank),
+      label: 'Aliments',
     ),
-    (
-      screen: const RepasScreen(),
-      title: 'Repas',
-      icon: Icons.restaurant,
+    const BottomNavigationBarItem(
+      icon: Icon(Icons.restaurant),
+      label: 'Repas',
     ),
-    (
-      screen: const EntrainementsScreen(),
-      title: 'Entraînements',
-      icon: Icons.fitness_center,
+    const BottomNavigationBarItem(
+      icon: Icon(Icons.fitness_center),
+      label: 'Entraînements',
     ),
-    (
-      screen: const MesuresScreen(),
-      title: 'Mesures',
-      icon: Icons.monitor_weight,
-    ),
-    (
-      screen: const ParametresNutritionnelsScreen(),
-      title: 'Paramètres Nutritionnels',
-      icon: Icons.settings,
+    const BottomNavigationBarItem(
+      icon: Icon(Icons.monitor_weight),
+      label: 'Mesures',
     ),
   ];
 
-  void _onItemSelected(int index) {
+  void _onItemTapped(int index) {
     setState(() {
       _selectedIndex = index;
+      // Cacher la liste de courses si on change d'écran
+      _showListeCourses = false;
+    });
+  }
+
+  void _toggleListeCourses() {
+    setState(() {
+      _showListeCourses = !_showListeCourses;
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    final currentScreen = _screens[_selectedIndex];
-    
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: Theme.of(context).colorScheme.primary,
-        foregroundColor: Colors.white,
-        title: Text(currentScreen.title),
+        title: const Text('Pigeon Nutrition'),
         actions: [
-          if (_selectedIndex != 5) // N'affiche pas l'icône des paramètres quand on est déjà sur les paramètres
+          if (_selectedIndex == 0) // Afficher l'icône de liste de courses uniquement sur le dashboard
             IconButton(
-              icon: const Icon(Icons.settings),
-              onPressed: () => _onItemSelected(5),
+              icon: const Icon(Icons.shopping_cart),
+              onPressed: _toggleListeCourses,
+            ),
+          IconButton(
+            icon: const Icon(Icons.settings),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(builder: (context) => const ParametresNutritionnelsScreen()),
+              );
+            },
+          ),
+        ],
+      ),
+      body: Stack(
+        children: [
+          _screens[_selectedIndex],
+          if (_showListeCourses)
+            Positioned(
+              right: 0,
+              top: 0,
+              bottom: 0,
+              width: MediaQuery.of(context).size.width * 0.8,
+              child: Card(
+                margin: EdgeInsets.zero,
+                child: ListeCoursesScreen(
+                  onClose: _toggleListeCourses,
+                ),
+              ),
             ),
         ],
       ),
-      body: currentScreen.screen,
       bottomNavigationBar: BottomNavigationBar(
+        items: _bottomNavItems,
+        currentIndex: _selectedIndex,
+        onTap: _onItemTapped,
         type: BottomNavigationBarType.fixed,
-        items: _screens.take(5).map((screen) => BottomNavigationBarItem(
-          icon: Icon(screen.icon),
-          label: screen.title.split(' ')[0], // Prend juste le premier mot pour la bottom bar
-        )).toList(),
-        currentIndex: _selectedIndex < 5 ? _selectedIndex : 0,
-        onTap: _onItemSelected,
       ),
-      floatingActionButton: (_selectedIndex == 1) ? FloatingActionButton(
-        onPressed: () {
-          // TODO: Ajouter la logique pour ajouter un aliment
-        },
-        backgroundColor: const Color(0xFF00897B),
-        child: const Icon(Icons.add, color: Colors.white),
-        tooltip: 'Ajouter un aliment',
-      ) : null,
     );
   }
 }

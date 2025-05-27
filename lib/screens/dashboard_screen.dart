@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../services/aliment_service.dart';
 import '../services/storage_service.dart';
 import '../models/parametres_nutritionnels.dart';
+import '../models/repas.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -14,6 +15,39 @@ class _DashboardScreenState extends State<DashboardScreen> {
   final AlimentService _alimentService = AlimentService();
   final StorageService _storageService = StorageService();
 
+  Future<Map<String, double>> _calculerMacrosJour() async {
+    final repas = await _storageService.getRepas();
+    final aujourdhui = DateTime.now();
+    final repasAujourdhui = repas.where((r) => 
+      r.date.year == aujourdhui.year && 
+      r.date.month == aujourdhui.month && 
+      r.date.day == aujourdhui.day
+    ).toList();
+
+    double calories = 0;
+    double proteines = 0;
+    double lipides = 0;
+    double glucides = 0;
+
+    for (final repas in repasAujourdhui) {
+      calories += repas.aliments.fold(0, (sum, a) {
+        double facteur = a.quantite / 100;
+        if (a.unite == 'kg') facteur *= 1000;
+        return sum + (a.aliment.calories * facteur);
+      });
+      proteines += repas.totalProteines;
+      lipides += repas.totalLipides;
+      glucides += repas.totalGlucides;
+    }
+
+    return {
+      'calories': calories,
+      'proteines': proteines,
+      'lipides': lipides,
+      'glucides': glucides,
+    };
+  }
+
   @override
   Widget build(BuildContext context) {
     return FutureBuilder<List<dynamic>>(
@@ -21,6 +55,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
         _alimentService.getAllAliments(),
         _alimentService.getAlimentsEnRupture(),
         _storageService.getParametresNutritionnels(),
+        _calculerMacrosJour(),
       ]),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
@@ -36,25 +71,31 @@ class _DashboardScreenState extends State<DashboardScreen> {
         final aliments = snapshot.data?[0] ?? [];
         final alimentsEnRupture = snapshot.data?[1] ?? [];
         final parametres = snapshot.data?[2] as ParametresNutritionnels?;
+        final macrosJour = snapshot.data?[3] as Map<String, double>? ?? {
+          'calories': 0.0,
+          'proteines': 0.0,
+          'lipides': 0.0,
+          'glucides': 0.0,
+        };
 
         final macros = parametres != null ? {
           'Calories': {
-            'actuel': 0.0, // TODO: Calculer depuis les repas du jour
+            'actuel': macrosJour['calories'] ?? 0.0,
             'objectif': parametres.caloriesQuotidiennes,
             'unite': 'kcal'
           },
           'Protéines': {
-            'actuel': 0.0, // TODO: Calculer depuis les repas du jour
+            'actuel': macrosJour['proteines'] ?? 0.0,
             'objectif': parametres.objectifProteinesGrammes,
             'unite': 'g'
           },
           'Lipides': {
-            'actuel': 0.0, // TODO: Calculer depuis les repas du jour
+            'actuel': macrosJour['lipides'] ?? 0.0,
             'objectif': parametres.objectifLipidesGrammes,
             'unite': 'g'
           },
           'Glucides': {
-            'actuel': 0.0, // TODO: Calculer depuis les repas du jour
+            'actuel': macrosJour['glucides'] ?? 0.0,
             'objectif': parametres.objectifGlucidesGrammes,
             'unite': 'g'
           },

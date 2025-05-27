@@ -186,11 +186,124 @@ class _ParametresNutritionnelsScreenState extends State<ParametresNutritionnelsS
       return const Center(child: CircularProgressIndicator());
     }
 
-    return Form(
-      key: _formKey,
-      child: ListView(
-        padding: const EdgeInsets.all(16.0),
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Paramètres'),
+      ),
+      body: ListView(
+        padding: const EdgeInsets.all(16),
         children: [
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Paramètres généraux',
+                    style: Theme.of(context).textTheme.titleLarge,
+                  ),
+                  const SizedBox(height: 16),
+                  SwitchListTile(
+                    title: const Text('Notifications'),
+                    subtitle: const Text('Activer les notifications de stock bas'),
+                    value: true, // TODO: Lier à la valeur réelle
+                    onChanged: (bool value) {
+                      // TODO: Implémenter la logique
+                    },
+                  ),
+                  const Divider(),
+                  ListTile(
+                    title: const Text('Seuil d\'alerte'),
+                    subtitle: const Text('Niveau de stock déclenchant une alerte'),
+                    trailing: SizedBox(
+                      width: 100,
+                      child: TextField(
+                        keyboardType: TextInputType.number,
+                        decoration: const InputDecoration(
+                          suffix: Text('%'),
+                          isDense: true,
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Unités par défaut',
+                    style: Theme.of(context).textTheme.titleLarge,
+                  ),
+                  const SizedBox(height: 16),
+                  ListTile(
+                    title: const Text('Poids'),
+                    trailing: DropdownButton<String>(
+                      value: 'g',
+                      items: const [
+                        DropdownMenuItem(value: 'g', child: Text('Grammes')),
+                        DropdownMenuItem(value: 'kg', child: Text('Kilogrammes')),
+                      ],
+                      onChanged: (String? value) {
+                        // TODO: Implémenter la logique
+                      },
+                    ),
+                  ),
+                  ListTile(
+                    title: const Text('Volume'),
+                    trailing: DropdownButton<String>(
+                      value: 'ml',
+                      items: const [
+                        DropdownMenuItem(value: 'ml', child: Text('Millilitres')),
+                        DropdownMenuItem(value: 'l', child: Text('Litres')),
+                      ],
+                      onChanged: (String? value) {
+                        // TODO: Implémenter la logique
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Devise',
+                    style: Theme.of(context).textTheme.titleLarge,
+                  ),
+                  const SizedBox(height: 16),
+                  ListTile(
+                    title: const Text('Devise par défaut'),
+                    trailing: DropdownButton<String>(
+                      value: 'EUR',
+                      items: const [
+                        DropdownMenuItem(value: 'EUR', child: Text('Euro (€)')),
+                        DropdownMenuItem(value: 'USD', child: Text('Dollar (\$)')),
+                        DropdownMenuItem(value: 'GBP', child: Text('Livre (£)')),
+                      ],
+                      onChanged: (String? value) {
+                        // TODO: Implémenter la logique
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 24),
           _buildSectionTitle('Données Physiques'),
           Card(
             child: Padding(

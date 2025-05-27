@@ -8,7 +8,8 @@ import 'screens/repas_screen.dart';
 import 'screens/entrainements_screen.dart';
 import 'screens/mesures_screen.dart';
 import 'screens/parametres_nutritionnels_screen.dart';
-import 'screens/liste_courses_screen.dart';
+import 'screens/splash_screen.dart';
+import 'widgets/liste_courses.dart';
 import 'theme/app_theme.dart';
 
 void main() async {
@@ -39,13 +40,41 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Pigeon Nutrition',
+      title: 'Pigeon Fitness',
       theme: AppTheme.theme,
-      home: const MainScreen(),
+      home: const SplashScreenWrapper(),
       routes: {
         '/parametres': (context) => const ParametresNutritionnelsScreen(),
+        '/main': (context) => const MainScreen(),
       },
     );
+  }
+}
+
+class SplashScreenWrapper extends StatefulWidget {
+  const SplashScreenWrapper({super.key});
+
+  @override
+  State<SplashScreenWrapper> createState() => _SplashScreenWrapperState();
+}
+
+class _SplashScreenWrapperState extends State<SplashScreenWrapper> {
+  @override
+  void initState() {
+    super.initState();
+    _navigateToMain();
+  }
+
+  _navigateToMain() async {
+    await Future.delayed(const Duration(milliseconds: 1500));
+    if (mounted) {
+      Navigator.of(context).pushReplacementNamed('/main');
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return const SplashScreen();
   }
 }
 
@@ -59,14 +88,34 @@ class MainScreen extends StatefulWidget {
 class _MainScreenState extends State<MainScreen> {
   int _selectedIndex = 0;
   bool _showListeCourses = false;
+  List<dynamic> _alimentsEnRupture = [];
+  late final List<Widget> _screens;
+  final Map<String, bool> _listeCoursesCheckedState = {};
 
-  final List<Widget> _screens = [
-    const DashboardScreen(),
-    const AlimentsScreen(),
-    const RepasScreen(),
-    const EntrainementsScreen(),
-    const MesuresScreen(),
-  ];
+  int get _itemsRestants => _alimentsEnRupture.where((a) => !(_listeCoursesCheckedState[a.id] ?? false)).length;
+  bool get _toutEstCoche => _itemsRestants == 0 && _alimentsEnRupture.isNotEmpty;
+
+  @override
+  void initState() {
+    super.initState();
+    _screens = [
+      DashboardScreen(
+        onAlimentsEnRuptureChanged: (aliments) {
+          Future.microtask(() {
+            if (mounted) {
+              setState(() {
+                _alimentsEnRupture = aliments;
+              });
+            }
+          });
+        },
+      ),
+      const AlimentsScreen(),
+      const RepasScreen(),
+      const EntrainementsScreen(),
+      const MesuresScreen(),
+    ];
+  }
 
   final List<BottomNavigationBarItem> _bottomNavItems = [
     const BottomNavigationBarItem(
@@ -105,6 +154,12 @@ class _MainScreenState extends State<MainScreen> {
     });
   }
 
+  void updateAlimentsEnRupture(List<dynamic> aliments) {
+    setState(() {
+      _alimentsEnRupture = aliments;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -113,7 +168,48 @@ class _MainScreenState extends State<MainScreen> {
         actions: [
           if (_selectedIndex == 0) // Afficher l'icône de liste de courses uniquement sur le dashboard
             IconButton(
-              icon: const Icon(Icons.shopping_cart),
+              icon: Stack(
+                children: [
+                  Icon(
+                    Icons.shopping_cart,
+                    color: _toutEstCoche ? Colors.green : null,
+                  ),
+                  if (_itemsRestants > 0)
+                    Positioned(
+                      right: 0,
+                      top: 0,
+                      child: Container(
+                        padding: const EdgeInsets.all(2),
+                        decoration: BoxDecoration(
+                          color: Colors.red,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        constraints: const BoxConstraints(
+                          minWidth: 14,
+                          minHeight: 14,
+                        ),
+                        child: Text(
+                          '$_itemsRestants',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 10,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ),
+                    ),
+                  if (_toutEstCoche)
+                    const Positioned(
+                      right: -5,
+                      bottom: -5,
+                      child: Icon(
+                        Icons.check_circle,
+                        color: Colors.green,
+                        size: 16,
+                      ),
+                    ),
+                ],
+              ),
               onPressed: _toggleListeCourses,
             ),
           IconButton(
@@ -126,7 +222,17 @@ class _MainScreenState extends State<MainScreen> {
               if (result == true && _selectedIndex == 0) {
                 setState(() {
                   // Recréer le dashboard pour forcer un rafraîchissement complet
-                  _screens[0] = const DashboardScreen();
+                  _screens[0] = DashboardScreen(
+                    onAlimentsEnRuptureChanged: (aliments) {
+                      Future.microtask(() {
+                        if (mounted) {
+                          setState(() {
+                            _alimentsEnRupture = aliments;
+                          });
+                        }
+                      });
+                    },
+                  );
                 });
               }
             },
@@ -144,7 +250,15 @@ class _MainScreenState extends State<MainScreen> {
               width: MediaQuery.of(context).size.width * 0.8,
               child: Card(
                 margin: EdgeInsets.zero,
-                child: ListeCoursesScreen(
+                child: ListeCourses(
+                  initialCheckedState: _listeCoursesCheckedState,
+                  onCheckedStateChanged: (newState) {
+                    setState(() {
+                      _listeCoursesCheckedState.clear();
+                      _listeCoursesCheckedState.addAll(newState);
+                    });
+                  },
+                  isDrawer: true,
                   onClose: _toggleListeCourses,
                 ),
               ),

@@ -72,26 +72,22 @@ class ParametresNutritionnels {
       'objectifProteines': objectifProteines,
       'objectifLipides': objectifLipides,
       'objectifGlucides': objectifGlucides,
-      'tmb': tmb,
-      'caloriesQuotidiennes': caloriesQuotidiennes,
-      'objectifProteinesGrammes': objectifProteinesGrammes,
-      'objectifLipidesGrammes': objectifLipidesGrammes,
-      'objectifGlucidesGrammes': objectifGlucidesGrammes,
     };
   }
 
   factory ParametresNutritionnels.fromMap(Map<String, dynamic> map) {
     final params = ParametresNutritionnels(
       id: map['id'],
-      poids: map['poids'],
-      taille: map['taille'],
-      age: map['age'],
-      sexe: map['sexe'],
-      niveauActivite: map['niveauActivite'],
-      objectifProteines: map['objectifProteines'],
-      objectifLipides: map['objectifLipides'],
-      objectifGlucides: map['objectifGlucides'],
+      poids: (map['poids'] as num).toDouble(),
+      taille: (map['taille'] as num).toDouble(),
+      age: map['age'] as int,
+      sexe: map['sexe'] as String,
+      niveauActivite: map['niveauActivite'] as String,
+      objectifProteines: (map['objectifProteines'] as num).toDouble(),
+      objectifLipides: (map['objectifLipides'] as num).toDouble(),
+      objectifGlucides: (map['objectifGlucides'] as num).toDouble(),
     );
+    params.calculerBesoins();
     return params;
   }
 } 

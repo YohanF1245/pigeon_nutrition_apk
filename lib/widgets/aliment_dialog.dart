@@ -25,7 +25,6 @@ class _AlimentDialogState extends State<AlimentDialog> with SingleTickerProvider
   final _formKey = GlobalKey<FormState>();
   late TabController _tabController;
   final _nomController = TextEditingController();
-  final _uniteSecondaireController = TextEditingController();
   final _prixUnitaireController = TextEditingController();
   final _deviseController = TextEditingController();
   final _quantiteStockController = TextEditingController();
@@ -36,9 +35,12 @@ class _AlimentDialogState extends State<AlimentDialog> with SingleTickerProvider
   final _proteinesController = TextEditingController();
   final _lipidesController = TextEditingController();
   final _glucidesController = TextEditingController();
-  final _facteurConversionController = TextEditingController();
+  final _poidsUnitaireController = TextEditingController();
+  final _unitePortionLabelController = TextEditingController();
+  final _nombreUniteParLotController = TextEditingController();
   bool _gestionStock = false;
   bool _autoDecrementation = false;
+  bool _gestionPortion = false;
   UniteBase _unite = UniteBase.gramme;
 
   @override
@@ -49,7 +51,6 @@ class _AlimentDialogState extends State<AlimentDialog> with SingleTickerProvider
       final aliment = widget.aliment!;
       _nomController.text = aliment.nom;
       _unite = aliment.unite;
-      _uniteSecondaireController.text = aliment.uniteSecondaire ?? '';
       _prixUnitaireController.text = aliment.prixUnitaire.toString();
       _deviseController.text = aliment.devise;
       _quantiteStockController.text = aliment.quantiteStock.toString();
@@ -60,13 +61,13 @@ class _AlimentDialogState extends State<AlimentDialog> with SingleTickerProvider
       _proteinesController.text = aliment.proteines.toString();
       _lipidesController.text = aliment.lipides.toString();
       _glucidesController.text = aliment.glucides.toString();
-      _facteurConversionController.text = aliment.facteurConversion?.toString() ?? '';
+      _poidsUnitaireController.text = aliment.poidsUnitaire?.toString() ?? '';
+      _unitePortionLabelController.text = aliment.unitePortionLabel ?? '';
+      _nombreUniteParLotController.text = aliment.nombreUniteParLot?.toString() ?? '';
       _gestionStock = aliment.gestionStock;
+      _gestionPortion = aliment.poidsUnitaire != null;
       if (_gestionStock) {
         _autoDecrementation = aliment.decrementationJournaliere != null;
-        if (_autoDecrementation) {
-          _decrementationJournaliereController.text = aliment.decrementationJournaliere?.toString() ?? '';
-        }
       }
     } else {
       _prixUnitaireController.text = '0';
@@ -84,7 +85,6 @@ class _AlimentDialogState extends State<AlimentDialog> with SingleTickerProvider
   void dispose() {
     _tabController.dispose();
     _nomController.dispose();
-    _uniteSecondaireController.dispose();
     _prixUnitaireController.dispose();
     _deviseController.dispose();
     _quantiteStockController.dispose();
@@ -95,7 +95,9 @@ class _AlimentDialogState extends State<AlimentDialog> with SingleTickerProvider
     _proteinesController.dispose();
     _lipidesController.dispose();
     _glucidesController.dispose();
-    _facteurConversionController.dispose();
+    _poidsUnitaireController.dispose();
+    _unitePortionLabelController.dispose();
+    _nombreUniteParLotController.dispose();
     super.dispose();
   }
 
@@ -237,56 +239,78 @@ class _AlimentDialogState extends State<AlimentDialog> with SingleTickerProvider
             validator: (value) => value?.isEmpty == true ? 'Requis' : null,
           ),
           const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: DropdownButtonFormField<UniteBase>(
-                  value: _unite,
-                  decoration: const InputDecoration(
-                    labelText: 'Unité *',
-                  ),
-                  items: UniteBase.values.map((unite) {
-                    return DropdownMenuItem(
-                      value: unite,
-                      child: Text(unite.symbole),
-                    );
-                  }).toList(),
-                  onChanged: (UniteBase? value) {
-                    if (value != null) {
-                      setState(() {
-                        _unite = value;
-                      });
-                    }
-                  },
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: TextFormField(
-                  controller: _uniteSecondaireController,
-                  decoration: const InputDecoration(
-                    labelText: 'Unité secondaire',
-                    hintText: 'Ex: cuillère',
-                  ),
-                ),
-              ),
-            ],
+          DropdownButtonFormField<UniteBase>(
+            value: _unite,
+            decoration: const InputDecoration(
+              labelText: 'Unité de base *',
+            ),
+            items: UniteBase.values.map((unite) {
+              return DropdownMenuItem(
+                value: unite,
+                child: Text(unite.symbole),
+              );
+            }).toList(),
+            onChanged: (UniteBase? value) {
+              if (value != null) {
+                setState(() {
+                  _unite = value;
+                });
+              }
+            },
           ),
-          if (_uniteSecondaireController.text.isNotEmpty) ...[
+          const SizedBox(height: 24),
+          const Divider(),
+          const SizedBox(height: 16),
+          SwitchListTile(
+            title: const Text('Gestion par portion'),
+            subtitle: const Text('Définir une unité de portion (tranche, unité...)'),
+            value: _gestionPortion,
+            onChanged: (value) => setState(() {
+              _gestionPortion = value;
+              if (!_gestionPortion) {
+                _poidsUnitaireController.clear();
+                _unitePortionLabelController.clear();
+                _nombreUniteParLotController.clear();
+              }
+            }),
+          ),
+          if (_gestionPortion) ...[
             const SizedBox(height: 16),
             TextFormField(
-              controller: _facteurConversionController,
+              controller: _poidsUnitaireController,
               decoration: const InputDecoration(
-                labelText: 'Facteur de conversion',
-                hintText: 'Ex: 1 cuillère = 15g, entrez 15',
+                labelText: 'Poids par unité (en grammes)',
+                hintText: 'Ex: 30 pour une tranche de 30g',
               ),
               keyboardType: TextInputType.number,
-              validator: (value) {
-                if (value != null && value.isNotEmpty) {
-                  if (double.tryParse(value) == null) return 'Nombre invalide';
-                }
-                return null;
-              },
+              validator: _validateNumber,
+              onTap: () => _poidsUnitaireController.selection = TextSelection(
+                baseOffset: 0,
+                extentOffset: _poidsUnitaireController.text.length,
+              ),
+            ),
+            const SizedBox(height: 16),
+            TextFormField(
+              controller: _unitePortionLabelController,
+              decoration: const InputDecoration(
+                labelText: 'Label de l\'unité',
+                hintText: 'Ex: tranche, unité, boîte',
+              ),
+              validator: (value) => value!.isEmpty ? 'Ce champ est requis' : null,
+            ),
+            const SizedBox(height: 16),
+            TextFormField(
+              controller: _nombreUniteParLotController,
+              decoration: const InputDecoration(
+                labelText: 'Nombre d\'unités par lot',
+                hintText: 'Ex: 6 tranches par paquet',
+              ),
+              keyboardType: TextInputType.number,
+              validator: (value) => value!.isNotEmpty ? _validateNumber(value) : null,
+              onTap: () => _nombreUniteParLotController.selection = TextSelection(
+                baseOffset: 0,
+                extentOffset: _nombreUniteParLotController.text.length,
+              ),
             ),
           ],
         ],
@@ -319,6 +343,10 @@ class _AlimentDialogState extends State<AlimentDialog> with SingleTickerProvider
                   ),
                   keyboardType: TextInputType.number,
                   validator: _validateNumber,
+                  onTap: () => _caloriesController.selection = TextSelection(
+                    baseOffset: 0,
+                    extentOffset: _caloriesController.text.length,
+                  ),
                 ),
               ),
               const SizedBox(width: 16),
@@ -331,6 +359,10 @@ class _AlimentDialogState extends State<AlimentDialog> with SingleTickerProvider
                   ),
                   keyboardType: TextInputType.number,
                   validator: _validateNumber,
+                  onTap: () => _proteinesController.selection = TextSelection(
+                    baseOffset: 0,
+                    extentOffset: _proteinesController.text.length,
+                  ),
                 ),
               ),
             ],
@@ -347,6 +379,10 @@ class _AlimentDialogState extends State<AlimentDialog> with SingleTickerProvider
                   ),
                   keyboardType: TextInputType.number,
                   validator: _validateNumber,
+                  onTap: () => _lipidesController.selection = TextSelection(
+                    baseOffset: 0,
+                    extentOffset: _lipidesController.text.length,
+                  ),
                 ),
               ),
               const SizedBox(width: 16),
@@ -359,6 +395,10 @@ class _AlimentDialogState extends State<AlimentDialog> with SingleTickerProvider
                   ),
                   keyboardType: TextInputType.number,
                   validator: _validateNumber,
+                  onTap: () => _glucidesController.selection = TextSelection(
+                    baseOffset: 0,
+                    extentOffset: _glucidesController.text.length,
+                  ),
                 ),
               ),
             ],
@@ -390,12 +430,18 @@ class _AlimentDialogState extends State<AlimentDialog> with SingleTickerProvider
             const SizedBox(height: 16),
             TextFormField(
               controller: _quantiteStockController,
-              decoration: const InputDecoration(
-                labelText: 'Quantité en stock',
+              decoration: InputDecoration(
+                labelText: _gestionPortion 
+                  ? 'Quantité en stock (en ${_unitePortionLabelController.text})'
+                  : 'Quantité en stock (en ${_unite.symbole})',
                 hintText: '0',
               ),
               keyboardType: TextInputType.number,
               validator: _validateNumber,
+              onTap: () => _quantiteStockController.selection = TextSelection(
+                baseOffset: 0,
+                extentOffset: _quantiteStockController.text.length,
+              ),
             ),
             const SizedBox(height: 16),
             TextFormField(
@@ -406,6 +452,10 @@ class _AlimentDialogState extends State<AlimentDialog> with SingleTickerProvider
               ),
               keyboardType: TextInputType.number,
               validator: (value) => value!.isNotEmpty ? _validateNumber(value) : null,
+              onTap: () => _seuilAlerteController.selection = TextSelection(
+                baseOffset: 0,
+                extentOffset: _seuilAlerteController.text.length,
+              ),
             ),
             const SizedBox(height: 16),
             SwitchListTile(
@@ -429,6 +479,10 @@ class _AlimentDialogState extends State<AlimentDialog> with SingleTickerProvider
                 ),
                 keyboardType: TextInputType.number,
                 validator: (value) => value!.isNotEmpty ? _validateNumber(value) : null,
+                onTap: () => _decrementationJournaliereController.selection = TextSelection(
+                  baseOffset: 0,
+                  extentOffset: _decrementationJournaliereController.text.length,
+                ),
               ),
             ],
           ],
@@ -450,7 +504,6 @@ class _AlimentDialogState extends State<AlimentDialog> with SingleTickerProvider
         id: widget.aliment?.id ?? const Uuid().v4(),
         nom: _nomController.text,
         unite: _unite,
-        uniteSecondaire: _uniteSecondaireController.text.isEmpty ? null : _uniteSecondaireController.text,
         prixUnitaire: double.parse(_prixUnitaireController.text),
         devise: _deviseController.text,
         gestionStock: _gestionStock,
@@ -462,7 +515,9 @@ class _AlimentDialogState extends State<AlimentDialog> with SingleTickerProvider
         proteines: double.parse(_proteinesController.text),
         lipides: double.parse(_lipidesController.text),
         glucides: double.parse(_glucidesController.text),
-        facteurConversion: _facteurConversionController.text.isEmpty ? null : double.parse(_facteurConversionController.text),
+        poidsUnitaire: _gestionPortion && _poidsUnitaireController.text.isNotEmpty ? double.parse(_poidsUnitaireController.text) : null,
+        unitePortionLabel: _gestionPortion ? _unitePortionLabelController.text : null,
+        nombreUniteParLot: _gestionPortion && _nombreUniteParLotController.text.isNotEmpty ? int.parse(_nombreUniteParLotController.text) : null,
       );
       Navigator.pop(context, aliment);
     }

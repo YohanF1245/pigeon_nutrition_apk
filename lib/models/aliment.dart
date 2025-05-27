@@ -1,7 +1,10 @@
+import 'package:uuid/uuid.dart';
+import 'unite_base.dart';
+
 class Aliment {
   final String id;
   final String nom;
-  final String unite;
+  final UniteBase unite;
   final String? uniteSecondaire;
   final double prixUnitaire;
   final String devise;
@@ -39,7 +42,7 @@ class Aliment {
     return {
       'id': id,
       'nom': nom,
-      'unite': unite,
+      'unite': unite.symbole,
       'uniteSecondaire': uniteSecondaire,
       'prixUnitaire': prixUnitaire,
       'devise': devise,
@@ -60,7 +63,7 @@ class Aliment {
     return Aliment(
       id: map['id'] as String,
       nom: map['nom'] as String,
-      unite: map['unite'] as String,
+      unite: UniteBase.fromSymbole(map['unite'] as String),
       uniteSecondaire: map['uniteSecondaire'] as String?,
       prixUnitaire: (map['prixUnitaire'] as num).toDouble(),
       devise: map['devise'] as String,
@@ -80,7 +83,7 @@ class Aliment {
   Aliment copyWith({
     String? id,
     String? nom,
-    String? unite,
+    UniteBase? unite,
     String? uniteSecondaire,
     double? prixUnitaire,
     String? devise,

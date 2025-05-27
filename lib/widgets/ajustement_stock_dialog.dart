@@ -28,7 +28,7 @@ class _AjustementStockDialogState extends State<AjustementStockDialog> {
         mainAxisSize: MainAxisSize.min,
         children: [
           Text(
-            'Stock actuel: ${widget.aliment.quantiteStock} ${widget.aliment.uniteSecondaire ?? widget.aliment.unite}',
+            'Stock actuel: ${widget.aliment.quantiteStock} ${widget.aliment.uniteSecondaire ?? widget.aliment.unite.symbole}',
           ),
           const SizedBox(height: 16),
           Row(
@@ -57,7 +57,7 @@ class _AjustementStockDialogState extends State<AjustementStockDialog> {
             controller: _controller,
             decoration: InputDecoration(
               labelText: 'Quantité à ${_isAddition ? 'ajouter' : 'retirer'}',
-              suffixText: widget.aliment.uniteSecondaire ?? widget.aliment.unite,
+              suffixText: widget.aliment.uniteSecondaire ?? widget.aliment.unite.symbole,
             ),
             keyboardType: TextInputType.number,
           ),

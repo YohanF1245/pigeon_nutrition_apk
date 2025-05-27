@@ -42,6 +42,9 @@ class MyApp extends StatelessWidget {
       title: 'Pigeon Nutrition',
       theme: AppTheme.theme,
       home: const MainScreen(),
+      routes: {
+        '/parametres': (context) => const ParametresNutritionnelsScreen(),
+      },
     );
   }
 }
@@ -115,11 +118,17 @@ class _MainScreenState extends State<MainScreen> {
             ),
           IconButton(
             icon: const Icon(Icons.settings),
-            onPressed: () {
-              Navigator.push(
+            onPressed: () async {
+              final result = await Navigator.push<bool>(
                 context,
                 MaterialPageRoute(builder: (context) => const ParametresNutritionnelsScreen()),
               );
+              if (result == true && _selectedIndex == 0) {
+                setState(() {
+                  // Recréer le dashboard pour forcer un rafraîchissement complet
+                  _screens[0] = const DashboardScreen();
+                });
+              }
             },
           ),
         ],

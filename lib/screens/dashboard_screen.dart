@@ -3,6 +3,8 @@ import '../services/aliment_service.dart';
 import '../services/storage_service.dart';
 import '../models/parametres_nutritionnels.dart';
 import '../models/repas.dart';
+import 'parametres_nutritionnels_screen.dart';
+import 'dart:async';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -14,6 +16,21 @@ class DashboardScreen extends StatefulWidget {
 class _DashboardScreenState extends State<DashboardScreen> {
   final AlimentService _alimentService = AlimentService();
   final StorageService _storageService = StorageService();
+  final _refreshController = StreamController<void>.broadcast();
+
+  @override
+  void dispose() {
+    _refreshController.close();
+    super.dispose();
+  }
+
+  void refresh() {
+    if (mounted) {
+      setState(() {
+        _refreshController.add(null);
+      });
+    }
+  }
 
   Future<Map<String, double>> _calculerMacrosJour() async {
     final repas = await _storageService.getRepas();
@@ -150,40 +167,49 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   ),
                 ),
                 const SizedBox(height: 24),
-              ],
-
-              // Section Alertes Stock
-              if (alimentsEnRupture.isNotEmpty) ...[
-                const Text(
-                  'Alertes Stock',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.red,
-                  ),
-                ),
-                const SizedBox(height: 8),
+              ] else ...[
                 Card(
-                  color: Colors.red[50],
-                  child: ListView.builder(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    itemCount: alimentsEnRupture.length,
-                    itemBuilder: (context, index) {
-                      final aliment = alimentsEnRupture[index];
-                      return ListTile(
-                        leading: const Icon(Icons.warning, color: Colors.red),
-                        title: Text(aliment.nom),
-                        subtitle: Text(
-                          'Stock: ${aliment.quantiteStock} ${aliment.unite} (Seuil: ${aliment.seuilAlerte} ${aliment.unite})',
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
+                      children: [
+                        const Icon(
+                          Icons.settings,
+                          size: 48,
+                          color: Colors.grey,
                         ),
-                      );
-                    },
+                        const SizedBox(height: 16),
+                        const Text(
+                          'Paramètres non configurés',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        const Text(
+                          'Pour voir vos objectifs nutritionnels, veuillez configurer vos paramètres personnels.',
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 16),
+                        ElevatedButton(
+                          onPressed: () async {
+                            final result = await Navigator.push<bool>(
+                              context,
+                              MaterialPageRoute(builder: (context) => const ParametresNutritionnelsScreen()),
+                            );
+                            if (result == true) {
+                              setState(() {});
+                            }
+                          },
+                          child: const Text('Configurer les paramètres'),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
                 const SizedBox(height: 24),
               ],
-
               // Section Résumé
               const Text(
                 'Résumé',
@@ -242,7 +268,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Color _getProgressColor(double progress) {
     if (progress < 0.5) return Colors.red;
     if (progress < 0.8) return Colors.orange;
-    if (progress < 1.0) return Colors.green;
-    return Colors.blue;
+    if (progress <= 1.0) return Colors.green;
+    return Colors.red;
   }
 } 

@@ -4,18 +4,27 @@ class RepasAliment {
   final Aliment aliment;
   final double quantite;
   final String unite;
+  final bool estEnPortion; // Indique si la quantité est en portions ou en grammes
 
   RepasAliment({
     required this.aliment,
     required this.quantite,
     required this.unite,
+    this.estEnPortion = false,
   });
+
+  // Obtenir la quantité en grammes pour les calculs
+  double get quantiteEnGrammes {
+    if (!estEnPortion || aliment.poidsUnitaire == null) return quantite;
+    return quantite * aliment.poidsUnitaire!;
+  }
 
   Map<String, dynamic> toMap() {
     return {
       'aliment': aliment.toMap(),
       'quantite': quantite,
       'unite': unite,
+      'estEnPortion': estEnPortion,
     };
   }
 
@@ -24,6 +33,7 @@ class RepasAliment {
       aliment: Aliment.fromMap(map['aliment']),
       quantite: map['quantite'],
       unite: map['unite'],
+      estEnPortion: map['estEnPortion'] ?? false,
     );
   }
 }
@@ -45,24 +55,21 @@ class Repas {
 
   double get totalProteines {
     return aliments.fold(0, (sum, repasAliment) {
-      double facteur = repasAliment.quantite / 100; // conversion en base 100g
-      if (repasAliment.unite == 'kg') facteur *= 1000;
+      double facteur = repasAliment.quantiteEnGrammes / 100;
       return sum + (repasAliment.aliment.proteines * facteur);
     });
   }
 
   double get totalLipides {
     return aliments.fold(0, (sum, repasAliment) {
-      double facteur = repasAliment.quantite / 100;
-      if (repasAliment.unite == 'kg') facteur *= 1000;
+      double facteur = repasAliment.quantiteEnGrammes / 100;
       return sum + (repasAliment.aliment.lipides * facteur);
     });
   }
 
   double get totalGlucides {
     return aliments.fold(0, (sum, repasAliment) {
-      double facteur = repasAliment.quantite / 100;
-      if (repasAliment.unite == 'kg') facteur *= 1000;
+      double facteur = repasAliment.quantiteEnGrammes / 100;
       return sum + (repasAliment.aliment.glucides * facteur);
     });
   }

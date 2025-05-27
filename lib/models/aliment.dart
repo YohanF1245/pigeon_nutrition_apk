@@ -5,11 +5,10 @@ class Aliment {
   final String id;
   final String nom;
   final UniteBase unite;
-  final String? uniteSecondaire;
   final double prixUnitaire;
   final String devise;
   final bool gestionStock;
-  double quantiteStock; // Non final pour permettre la mise à jour du stock
+  double quantiteStock;
   final double? seuilAlerte;
   final double? decrementationJournaliere;
   final double quantiteAchatParDefaut;
@@ -17,13 +16,14 @@ class Aliment {
   final double proteines;
   final double lipides;
   final double glucides;
-  final double? facteurConversion;
+  final double? poidsUnitaire;
+  final String? unitePortionLabel;
+  final int? nombreUniteParLot;
 
   Aliment({
     required this.id,
     required this.nom,
     required this.unite,
-    this.uniteSecondaire,
     required this.prixUnitaire,
     required this.devise,
     required this.gestionStock,
@@ -35,7 +35,9 @@ class Aliment {
     this.proteines = 0,
     this.lipides = 0,
     this.glucides = 0,
-    this.facteurConversion,
+    this.poidsUnitaire,
+    this.unitePortionLabel,
+    this.nombreUniteParLot,
   });
 
   Map<String, dynamic> toMap() {
@@ -43,7 +45,6 @@ class Aliment {
       'id': id,
       'nom': nom,
       'unite': unite.symbole,
-      'uniteSecondaire': uniteSecondaire,
       'prixUnitaire': prixUnitaire,
       'devise': devise,
       'gestionStock': gestionStock ? 1 : 0,
@@ -55,7 +56,9 @@ class Aliment {
       'proteines': proteines,
       'lipides': lipides,
       'glucides': glucides,
-      'facteurConversion': facteurConversion,
+      'poidsUnitaire': poidsUnitaire,
+      'unitePortionLabel': unitePortionLabel,
+      'nombreUniteParLot': nombreUniteParLot,
     };
   }
 
@@ -64,7 +67,6 @@ class Aliment {
       id: map['id'] as String,
       nom: map['nom'] as String,
       unite: UniteBase.fromSymbole(map['unite'] as String),
-      uniteSecondaire: map['uniteSecondaire'] as String?,
       prixUnitaire: (map['prixUnitaire'] as num).toDouble(),
       devise: map['devise'] as String,
       gestionStock: map['gestionStock'] == 1,
@@ -76,7 +78,9 @@ class Aliment {
       proteines: (map['proteines'] as num?)?.toDouble() ?? 0,
       lipides: (map['lipides'] as num?)?.toDouble() ?? 0,
       glucides: (map['glucides'] as num?)?.toDouble() ?? 0,
-      facteurConversion: map['facteurConversion'] == null ? null : (map['facteurConversion'] as num).toDouble(),
+      poidsUnitaire: map['poidsUnitaire'] == null ? null : (map['poidsUnitaire'] as num).toDouble(),
+      unitePortionLabel: map['unitePortionLabel'] as String?,
+      nombreUniteParLot: map['nombreUniteParLot'] as int?,
     );
   }
 
@@ -84,7 +88,6 @@ class Aliment {
     String? id,
     String? nom,
     UniteBase? unite,
-    String? uniteSecondaire,
     double? prixUnitaire,
     String? devise,
     bool? gestionStock,
@@ -96,13 +99,14 @@ class Aliment {
     double? proteines,
     double? lipides,
     double? glucides,
-    double? facteurConversion,
+    double? poidsUnitaire,
+    String? unitePortionLabel,
+    int? nombreUniteParLot,
   }) {
     return Aliment(
       id: id ?? this.id,
       nom: nom ?? this.nom,
       unite: unite ?? this.unite,
-      uniteSecondaire: uniteSecondaire ?? this.uniteSecondaire,
       prixUnitaire: prixUnitaire ?? this.prixUnitaire,
       devise: devise ?? this.devise,
       gestionStock: gestionStock ?? this.gestionStock,
@@ -114,8 +118,38 @@ class Aliment {
       proteines: proteines ?? this.proteines,
       lipides: lipides ?? this.lipides,
       glucides: glucides ?? this.glucides,
-      facteurConversion: facteurConversion ?? this.facteurConversion,
+      poidsUnitaire: poidsUnitaire ?? this.poidsUnitaire,
+      unitePortionLabel: unitePortionLabel ?? this.unitePortionLabel,
+      nombreUniteParLot: nombreUniteParLot ?? this.nombreUniteParLot,
     );
+  }
+
+  // Nouvelles méthodes pour la gestion des portions
+  double get stockEnUnites {
+    // Le stock est déjà en unités si on a une unité de portion
+    if (unitePortionLabel != null) return quantiteStock;
+    return quantiteStock;
+  }
+
+  String getStockDisplay() {
+    if (unitePortionLabel != null) {
+      return '${quantiteStock.toStringAsFixed(0)} ${unitePortionLabel!}';
+    }
+    return '${quantiteStock.toStringAsFixed(1)} ${unite.symbole}';
+  }
+
+  String getStockLabel() {
+    if (!gestionStock) return '';
+    if (unitePortionLabel != null) {
+      return 'Stock (en ${unitePortionLabel!.toLowerCase()})';
+    }
+    return 'Stock (en ${unite.symbole})';
+  }
+
+  // Vérifier si le stock est bas
+  bool get stockBas {
+    if (!gestionStock || seuilAlerte == null) return false;
+    return quantiteStock <= seuilAlerte!;
   }
 
   // Méthode pour mettre à jour le stock
@@ -124,22 +158,51 @@ class Aliment {
     if (quantiteStock < 0) quantiteStock = 0;
   }
 
-  // Vérifier si le stock est bas
-  bool get stockBas => gestionStock && seuilAlerte != null && quantiteStock <= seuilAlerte!;
-
-  // Calculer le prix pour une quantité donnée
-  double calculerPrix(double quantite) {
-    return (prixUnitaire * quantite) / 100; // Prix pour 100g/ml
-  }
-
   // Calculer les valeurs nutritionnelles pour une quantité donnée
   Map<String, double> calculerNutriments(double quantite) {
-    double facteur = quantite / 100; // Les valeurs sont pour 100g/ml
+    if (poidsUnitaire != null && unitePortionLabel != null) {
+      // Si on a une unité de portion, on convertit d'abord en grammes
+      double quantiteEnGrammes = quantite * poidsUnitaire!;
+      double facteur = quantiteEnGrammes / 100;
+      return {
+        'calories': calories * facteur,
+        'proteines': proteines * facteur,
+        'lipides': lipides * facteur,
+        'glucides': glucides * facteur,
+      };
+    }
+    // Sinon on utilise directement la quantité
+    double facteur = quantite / 100;
     return {
       'calories': calories * facteur,
       'proteines': proteines * facteur,
       'lipides': lipides * facteur,
       'glucides': glucides * facteur,
     };
+  }
+
+  // Calculer le prix pour une quantité donnée
+  double calculerPrix(double quantite) {
+    if (poidsUnitaire != null && poidsUnitaire! > 0) {
+      return (prixUnitaire * quantite * poidsUnitaire!) / 100; // Prix pour 100g/ml
+    }
+    return (prixUnitaire * quantite) / 100; // Prix pour 100g/ml
+  }
+
+  // Méthode pour calculer les nutriments par portion
+  Map<String, double> calculerNutrimentsParPortion() {
+    if (poidsUnitaire == null || poidsUnitaire == 0) {
+      return calculerNutriments(100); // Retourne pour 100g si pas de portion définie
+    }
+    return calculerNutriments(poidsUnitaire!);
+  }
+
+  // Méthode pour ajuster le stock en unités
+  void ajusterStockEnUnites(double nombreUnites) {
+    if (poidsUnitaire != null && poidsUnitaire! > 0) {
+      ajusterStock(nombreUnites * poidsUnitaire!);
+    } else {
+      ajusterStock(nombreUnites);
+    }
   }
 } 

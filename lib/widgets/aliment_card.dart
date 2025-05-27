@@ -3,12 +3,16 @@ import '../models/aliment.dart';
 import '../theme/app_theme.dart';
 import '../widgets/aliment_dialog.dart';
 import '../widgets/ajustement_stock_dialog.dart';
+import '../services/aliment_service.dart';
+import 'package:logging/logging.dart';
 
 class AlimentCard extends StatelessWidget {
   final Aliment aliment;
   final VoidCallback onModified;
+  final _alimentService = AlimentService();
+  final _logger = Logger('AlimentCard');
 
-  const AlimentCard({
+  AlimentCard({
     super.key,
     required this.aliment,
     required this.onModified,
@@ -47,12 +51,34 @@ class AlimentCard extends StatelessWidget {
                           ),
                           const SizedBox(width: 4),
                           Text(
-                            'Stock: ${aliment.quantiteStock} ${aliment.uniteSecondaire ?? aliment.unite.symbole}',
+                            aliment.getStockDisplay(),
                             style: TextStyle(
                               color: aliment.stockBas ? Colors.orange : Colors.grey[600],
                               fontSize: 14,
                             ),
                           ),
+                          if (aliment.seuilAlerte != null) ...[
+                            const SizedBox(width: 8),
+                            Text(
+                              '(min: ${aliment.seuilAlerte!.toStringAsFixed(0)} ${aliment.unitePortionLabel ?? aliment.unite.symbole})',
+                              style: TextStyle(
+                                color: Colors.red[300],
+                                fontSize: 14,
+                                fontStyle: FontStyle.italic,
+                              ),
+                            ),
+                          ],
+                          if (aliment.gestionStock && (aliment.unitePortionLabel != null || aliment.unite.symbole.isNotEmpty)) ...[
+                            const SizedBox(width: 8),
+                            Text(
+                              aliment.getStockLabel(),
+                              style: TextStyle(
+                                color: Colors.grey[600],
+                                fontSize: 12,
+                                fontStyle: FontStyle.italic,
+                              ),
+                            ),
+                          ],
                         ],
                       ),
                     ],
@@ -64,12 +90,25 @@ class AlimentCard extends StatelessWidget {
                       IconButton(
                         icon: const Icon(Icons.edit_attributes),
                         onPressed: () async {
-                          final result = await showDialog<double>(
-                            context: context,
-                            builder: (context) => AjustementStockDialog(aliment: aliment),
-                          );
-                          if (result != null) {
-                            onModified();
+                          try {
+                            final result = await showDialog<double>(
+                              context: context,
+                              builder: (context) => AjustementStockDialog(aliment: aliment),
+                            );
+                            if (result != null) {
+                              await _alimentService.ajusterStock(aliment.id, result);
+                              onModified();
+                            }
+                          } catch (e) {
+                            _logger.severe('Erreur lors de l\'ajustement du stock: $e');
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('Erreur lors de l\'ajustement du stock: $e'),
+                                  backgroundColor: Colors.red,
+                                ),
+                              );
+                            }
                           }
                         },
                         tooltip: 'Ajuster le stock',
@@ -77,12 +116,23 @@ class AlimentCard extends StatelessWidget {
                     IconButton(
                       icon: const Icon(Icons.edit),
                       onPressed: () async {
-                        final result = await AlimentDialog.show(
-                          context,
-                          aliment: aliment,
-                        );
-                        if (result != null) {
-                          onModified();
+                        try {
+                          final result = await AlimentDialog.show(
+                            context,
+                            aliment: aliment,
+                          );
+                          if (result != null) {
+                            await _alimentService.updateAliment(result);
+                            onModified();
+                          }
+                        } catch (e) {
+                          _logger.severe('Erreur lors de la modification: $e');
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text('Erreur lors de la modification: $e'),
+                              backgroundColor: Colors.red,
+                            ),
+                          );
                         }
                       },
                       tooltip: 'Modifier',

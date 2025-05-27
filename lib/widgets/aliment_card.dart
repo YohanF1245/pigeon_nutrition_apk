@@ -1,152 +1,180 @@
 import 'package:flutter/material.dart';
 import '../models/aliment.dart';
-import '../services/aliment_service.dart';
+import '../theme/app_theme.dart';
 import '../widgets/aliment_dialog.dart';
 import '../widgets/ajustement_stock_dialog.dart';
 
 class AlimentCard extends StatelessWidget {
   final Aliment aliment;
   final VoidCallback onModified;
-  final AlimentService _alimentService = AlimentService();
 
-  AlimentCard({
+  const AlimentCard({
     super.key,
     required this.aliment,
     required this.onModified,
   });
 
-  Future<void> _modifierAliment(BuildContext context) async {
-    final result = await AlimentDialog.show(context, aliment: aliment);
-    if (result != null) {
-      await _alimentService.updateAliment(result);
-      onModified();
-    }
-  }
-
-  Future<void> _supprimerAliment(BuildContext context) async {
-    final confirme = await showDialog<bool>(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Confirmation'),
-        content: const Text('Voulez-vous vraiment supprimer cet aliment ?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context, false),
-            child: const Text('Annuler'),
-          ),
-          TextButton(
-            onPressed: () => Navigator.pop(context, true),
-            child: const Text('Supprimer'),
-          ),
-        ],
-      ),
-    );
-
-    if (confirme == true) {
-      await _alimentService.deleteAliment(aliment.id);
-      onModified();
-    }
-  }
-
-  Future<void> _ajusterStock(BuildContext context) async {
-    final result = await showDialog<double>(
-      context: context,
-      builder: (context) => AjustementStockDialog(aliment: aliment),
-    );
-
-    if (result != null) {
-      await _alimentService.ajusterStock(aliment.id, result);
-      onModified();
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return Card(
-      margin: const EdgeInsets.symmetric(
-        horizontal: 8.0,
-        vertical: 4.0,
-      ),
-      child: ListTile(
-        title: Text(aliment.nom),
-        subtitle: Column(
+      margin: const EdgeInsets.symmetric(vertical: 4, horizontal: 8),
+      child: Padding(
+        padding: const EdgeInsets.all(12.0),
+        child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Stock: ${aliment.quantiteStock} ${aliment.uniteSecondaire ?? aliment.unite}',
-              style: const TextStyle(fontSize: 14),
-            ),
-            Text(
-              'Prix: ${aliment.prixUnitaire} ${aliment.devise}/100${aliment.unite}',
-              style: const TextStyle(fontSize: 14),
-            ),
-            if (aliment.stockBas)
-              Container(
-                margin: const EdgeInsets.only(top: 4),
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                decoration: BoxDecoration(
-                  color: Colors.red[100],
-                  borderRadius: BorderRadius.circular(4),
-                ),
-                child: Text(
-                  'Stock bas',
-                  style: TextStyle(
-                    color: Colors.red[900],
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        aliment.nom,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 18,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Row(
+                        children: [
+                          Icon(
+                            aliment.stockBas ? Icons.warning : Icons.inventory,
+                            color: aliment.stockBas ? Colors.orange : Colors.grey,
+                            size: 16,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            'Stock: ${aliment.quantiteStock} ${aliment.uniteSecondaire ?? aliment.unite.symbole}',
+                            style: TextStyle(
+                              color: aliment.stockBas ? Colors.orange : Colors.grey[600],
+                              fontSize: 14,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
                 ),
-              ),
+                Row(
+                  children: [
+                    if (aliment.gestionStock)
+                      IconButton(
+                        icon: const Icon(Icons.edit_attributes),
+                        onPressed: () async {
+                          final result = await showDialog<double>(
+                            context: context,
+                            builder: (context) => AjustementStockDialog(aliment: aliment),
+                          );
+                          if (result != null) {
+                            onModified();
+                          }
+                        },
+                        tooltip: 'Ajuster le stock',
+                      ),
+                    IconButton(
+                      icon: const Icon(Icons.edit),
+                      onPressed: () async {
+                        final result = await AlimentDialog.show(
+                          context,
+                          aliment: aliment,
+                        );
+                        if (result != null) {
+                          onModified();
+                        }
+                      },
+                      tooltip: 'Modifier',
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceAround,
+              children: [
+                _NutritionBox(
+                  label: 'Calories',
+                  value: aliment.calories,
+                  unit: 'kcal',
+                  color: Colors.red[100]!,
+                  textColor: Colors.red[900]!,
+                ),
+                _NutritionBox(
+                  label: 'Protéines',
+                  value: aliment.proteines,
+                  unit: 'g',
+                  color: Colors.blue[100]!,
+                  textColor: Colors.blue[900]!,
+                ),
+                _NutritionBox(
+                  label: 'Lipides',
+                  value: aliment.lipides,
+                  unit: 'g',
+                  color: Colors.yellow[100]!,
+                  textColor: Colors.yellow[900]!,
+                ),
+                _NutritionBox(
+                  label: 'Glucides',
+                  value: aliment.glucides,
+                  unit: 'g',
+                  color: Colors.green[100]!,
+                  textColor: Colors.green[900]!,
+                ),
+              ],
+            ),
           ],
         ),
-        trailing: PopupMenuButton<String>(
-          icon: const Icon(Icons.more_vert),
-          onSelected: (value) {
-            switch (value) {
-              case 'edit':
-                _modifierAliment(context);
-                break;
-              case 'delete':
-                _supprimerAliment(context);
-                break;
-              case 'stock':
-                _ajusterStock(context);
-                break;
-            }
-          },
-          itemBuilder: (context) => [
-            const PopupMenuItem(
-              value: 'edit',
-              child: Row(
-                children: [
-                  Icon(Icons.edit),
-                  SizedBox(width: 8),
-                  Text('Modifier'),
-                ],
-              ),
+      ),
+    );
+  }
+}
+
+class _NutritionBox extends StatelessWidget {
+  final String label;
+  final double value;
+  final String unit;
+  final Color color;
+  final Color textColor;
+
+  const _NutritionBox({
+    required this.label,
+    required this.value,
+    required this.unit,
+    required this.color,
+    required this.textColor,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(8),
+      decoration: BoxDecoration(
+        color: color,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Column(
+        children: [
+          Text(
+            label,
+            style: TextStyle(
+              color: textColor,
+              fontWeight: FontWeight.bold,
+              fontSize: 12,
             ),
-            const PopupMenuItem(
-              value: 'stock',
-              child: Row(
-                children: [
-                  Icon(Icons.inventory),
-                  SizedBox(width: 8),
-                  Text('Ajuster le stock'),
-                ],
-              ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            '${value.toStringAsFixed(1)}$unit',
+            style: TextStyle(
+              color: textColor,
+              fontWeight: FontWeight.bold,
+              fontSize: 14,
             ),
-            const PopupMenuItem(
-              value: 'delete',
-              child: Row(
-                children: [
-                  Icon(Icons.delete, color: Colors.red),
-                  SizedBox(width: 8),
-                  Text('Supprimer', style: TextStyle(color: Colors.red)),
-                ],
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

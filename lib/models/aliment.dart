@@ -1,108 +1,118 @@
 class Aliment {
-  String id;
-  String nom;
-  String description;
-  bool gestionStock;
-  double quantiteStock;
-  double seuilAlerte;
-  String unite; // 'g', 'ml'
-  String? uniteSecondaire; // ex: "œuf", "tranche"
-  double? facteurConversion; // ex: 1 œuf = 50g
-  double quantiteAchatParDefaut;
-  double? decrementationJournaliere; // Quantité à décrémenter automatiquement par jour
-  
-  // Valeurs nutritionnelles pour 100g/100ml
-  double calories;
-  double proteines;
-  double lipides;
-  double glucides;
-  double fibres;
-  double eau;
-
-  // Prix
-  double prixUnitaire;
-  String devise; // 'EUR', 'USD', etc.
+  final String id;
+  final String nom;
+  final String unite;
+  final String? uniteSecondaire;
+  final double prixUnitaire;
+  final String devise;
+  final bool gestionStock;
+  double quantiteStock; // Non final pour permettre la mise à jour du stock
+  final double? seuilAlerte;
+  final double? decrementationJournaliere;
+  final double quantiteAchatParDefaut;
+  final double calories;
+  final double proteines;
+  final double lipides;
+  final double glucides;
+  final double? facteurConversion;
 
   Aliment({
     required this.id,
     required this.nom,
-    this.description = '',
-    this.gestionStock = false,
-    required this.quantiteStock,
-    required this.seuilAlerte,
     required this.unite,
     this.uniteSecondaire,
-    this.facteurConversion,
-    required this.quantiteAchatParDefaut,
-    this.decrementationJournaliere,
-    required this.calories,
-    required this.proteines,
-    required this.lipides,
-    required this.glucides,
-    this.fibres = 0,
-    this.eau = 0,
     required this.prixUnitaire,
-    this.devise = 'EUR',
+    required this.devise,
+    required this.gestionStock,
+    required this.quantiteStock,
+    this.seuilAlerte,
+    this.decrementationJournaliere,
+    this.quantiteAchatParDefaut = 1000,
+    this.calories = 0,
+    this.proteines = 0,
+    this.lipides = 0,
+    this.glucides = 0,
+    this.facteurConversion,
   });
 
   Map<String, dynamic> toMap() {
     return {
       'id': id,
       'nom': nom,
-      'description': description,
+      'unite': unite,
+      'uniteSecondaire': uniteSecondaire,
+      'prixUnitaire': prixUnitaire,
+      'devise': devise,
       'gestionStock': gestionStock ? 1 : 0,
       'quantiteStock': quantiteStock,
       'seuilAlerte': seuilAlerte,
-      'unite': unite,
-      'uniteSecondaire': uniteSecondaire,
-      'facteurConversion': facteurConversion,
-      'quantiteAchatParDefaut': quantiteAchatParDefaut,
       'decrementationJournaliere': decrementationJournaliere,
+      'quantiteAchatParDefaut': quantiteAchatParDefaut,
       'calories': calories,
       'proteines': proteines,
       'lipides': lipides,
       'glucides': glucides,
-      'fibres': fibres,
-      'eau': eau,
-      'prixUnitaire': prixUnitaire,
-      'devise': devise,
+      'facteurConversion': facteurConversion,
     };
   }
 
   factory Aliment.fromMap(Map<String, dynamic> map) {
     return Aliment(
-      id: map['id'],
-      nom: map['nom'],
-      description: map['description'] ?? '',
+      id: map['id'] as String,
+      nom: map['nom'] as String,
+      unite: map['unite'] as String,
+      uniteSecondaire: map['uniteSecondaire'] as String?,
+      prixUnitaire: (map['prixUnitaire'] as num).toDouble(),
+      devise: map['devise'] as String,
       gestionStock: map['gestionStock'] == 1,
-      quantiteStock: map['quantiteStock'].toDouble(),
-      seuilAlerte: map['seuilAlerte'].toDouble(),
-      unite: map['unite'],
-      uniteSecondaire: map['uniteSecondaire'],
-      facteurConversion: map['facteurConversion']?.toDouble(),
-      quantiteAchatParDefaut: map['quantiteAchatParDefaut'].toDouble(),
-      decrementationJournaliere: map['decrementationJournaliere']?.toDouble(),
-      calories: map['calories'].toDouble(),
-      proteines: map['proteines'].toDouble(),
-      lipides: map['lipides'].toDouble(),
-      glucides: map['glucides'].toDouble(),
-      fibres: map['fibres']?.toDouble() ?? 0,
-      eau: map['eau']?.toDouble() ?? 0,
-      prixUnitaire: map['prixUnitaire'].toDouble(),
-      devise: map['devise'] ?? 'EUR',
+      quantiteStock: (map['quantiteStock'] as num).toDouble(),
+      seuilAlerte: map['seuilAlerte'] == null ? null : (map['seuilAlerte'] as num).toDouble(),
+      decrementationJournaliere: map['decrementationJournaliere'] == null ? null : (map['decrementationJournaliere'] as num).toDouble(),
+      quantiteAchatParDefaut: (map['quantiteAchatParDefaut'] as num?)?.toDouble() ?? 1000,
+      calories: (map['calories'] as num?)?.toDouble() ?? 0,
+      proteines: (map['proteines'] as num?)?.toDouble() ?? 0,
+      lipides: (map['lipides'] as num?)?.toDouble() ?? 0,
+      glucides: (map['glucides'] as num?)?.toDouble() ?? 0,
+      facteurConversion: map['facteurConversion'] == null ? null : (map['facteurConversion'] as num).toDouble(),
     );
   }
 
-  // Méthode pour convertir une quantité de l'unité secondaire vers l'unité principale
-  double convertirEnUnitePrincipale(double quantiteUniteSecondaire) {
-    if (uniteSecondaire == null || facteurConversion == null) return quantiteUniteSecondaire;
-    return quantiteUniteSecondaire * facteurConversion!;
-  }
-
-  // Méthode pour convertir une quantité de l'unité principale vers l'unité secondaire
-  double convertirEnUniteSecondaire(double quantiteUnitePrincipale) {
-    if (uniteSecondaire == null || facteurConversion == null) return quantiteUnitePrincipale;
-    return quantiteUnitePrincipale / facteurConversion!;
+  Aliment copyWith({
+    String? id,
+    String? nom,
+    String? unite,
+    String? uniteSecondaire,
+    double? prixUnitaire,
+    String? devise,
+    bool? gestionStock,
+    double? quantiteStock,
+    double? seuilAlerte,
+    double? decrementationJournaliere,
+    double? quantiteAchatParDefaut,
+    double? calories,
+    double? proteines,
+    double? lipides,
+    double? glucides,
+    double? facteurConversion,
+  }) {
+    return Aliment(
+      id: id ?? this.id,
+      nom: nom ?? this.nom,
+      unite: unite ?? this.unite,
+      uniteSecondaire: uniteSecondaire ?? this.uniteSecondaire,
+      prixUnitaire: prixUnitaire ?? this.prixUnitaire,
+      devise: devise ?? this.devise,
+      gestionStock: gestionStock ?? this.gestionStock,
+      quantiteStock: quantiteStock ?? this.quantiteStock,
+      seuilAlerte: seuilAlerte ?? this.seuilAlerte,
+      decrementationJournaliere: decrementationJournaliere ?? this.decrementationJournaliere,
+      quantiteAchatParDefaut: quantiteAchatParDefaut ?? this.quantiteAchatParDefaut,
+      calories: calories ?? this.calories,
+      proteines: proteines ?? this.proteines,
+      lipides: lipides ?? this.lipides,
+      glucides: glucides ?? this.glucides,
+      facteurConversion: facteurConversion ?? this.facteurConversion,
+    );
   }
 
   // Méthode pour mettre à jour le stock
@@ -112,7 +122,7 @@ class Aliment {
   }
 
   // Vérifier si le stock est bas
-  bool get stockBas => gestionStock && quantiteStock <= seuilAlerte;
+  bool get stockBas => gestionStock && seuilAlerte != null && quantiteStock <= seuilAlerte!;
 
   // Calculer le prix pour une quantité donnée
   double calculerPrix(double quantite) {
@@ -127,8 +137,6 @@ class Aliment {
       'proteines': proteines * facteur,
       'lipides': lipides * facteur,
       'glucides': glucides * facteur,
-      'fibres': fibres * facteur,
-      'eau': eau * facteur,
     };
   }
 } 

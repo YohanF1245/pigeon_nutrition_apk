@@ -81,6 +81,20 @@ class _ParametresNutritionnelsScreenState extends State<ParametresNutritionnelsS
     if (_formKey.currentState!.validate()) {
       _formKey.currentState!.save();
 
+      // Vérifier que le total des macronutriments est égal à 100%
+      final total = _objectifProteines + _objectifLipides + _objectifGlucides;
+      if (total != 100) {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Le total des macronutriments doit être égal à 100%'),
+              backgroundColor: Colors.red,
+            ),
+          );
+        }
+        return;
+      }
+
       final parametres = ParametresNutritionnels(
         id: _parametres?.id ?? _uuid.v4(),
         poids: _poids,
@@ -428,28 +442,37 @@ class _ParametresNutritionnelsScreenState extends State<ParametresNutritionnelsS
                       label: 'Protéines',
                       value: _objectifProteines,
                       onChanged: _calculAutomatique ? null : (value) {
-                        setState(() {
-                          _objectifProteines = value;
-                          _objectifGlucides = 100 - _objectifProteines - _objectifLipides;
-                        });
+                        final maxProteines = 100 - _objectifLipides;
+                        if (value <= maxProteines) {
+                          setState(() {
+                            _objectifProteines = value;
+                            _objectifGlucides = maxProteines - value;
+                          });
+                        }
                       },
+                      maxValue: 100 - _objectifLipides,
                       description: 'Essentielles pour la croissance et la réparation musculaire',
                     ),
                     _buildSlider(
                       label: 'Lipides',
                       value: _objectifLipides,
                       onChanged: _calculAutomatique ? null : (value) {
-                        setState(() {
-                          _objectifLipides = value;
-                          _objectifGlucides = 100 - _objectifProteines - _objectifLipides;
-                        });
+                        final maxLipides = 100 - _objectifProteines;
+                        if (value <= maxLipides) {
+                          setState(() {
+                            _objectifLipides = value;
+                            _objectifGlucides = maxLipides - value;
+                          });
+                        }
                       },
+                      maxValue: 100 - _objectifProteines,
                       description: 'Importants pour les hormones et l\'absorption des vitamines',
                     ),
                     _buildSlider(
                       label: 'Glucides',
                       value: _objectifGlucides,
                       enabled: false,
+                      maxValue: 100,
                       description: 'Principale source d\'énergie',
                     ),
                   ],
@@ -532,6 +555,7 @@ class _ParametresNutritionnelsScreenState extends State<ParametresNutritionnelsS
     void Function(double)? onChanged,
     bool enabled = true,
     required String description,
+    required double maxValue,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -548,7 +572,7 @@ class _ParametresNutritionnelsScreenState extends State<ParametresNutritionnelsS
         Slider(
           value: value,
           min: 0,
-          max: 100,
+          max: maxValue,
           divisions: 100,
           onChanged: onChanged,
         ),

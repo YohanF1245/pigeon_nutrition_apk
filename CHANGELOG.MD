@@ -13,10 +13,13 @@ et ce projet adhère au [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Améliorations
 - Refonte du système de liste de courses
+- Optimisation de la gestion d'état pour une meilleure réactivité de l'interface
 
 ### Corrections
 - Suppression des labels redondants "Stock (en xxx)" pour éviter les surcharges visuelles
 - Correction de la taille des labels dans la liste de courses pour éviter l'overflow
+- Correction du compteur d'articles dans l'icône du panier qui ne se mettait pas à jour après validation des achats
+- Correction du flash du compteur lors de la validation des achats
 
 ## [0.1.0] - Version initiale
 

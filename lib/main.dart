@@ -11,9 +11,17 @@ import 'screens/parametres_nutritionnels_screen.dart';
 import 'screens/splash_screen.dart';
 import 'widgets/liste_courses.dart';
 import 'theme/app_theme.dart';
+import 'services/database_service.dart';
+import 'services/repas_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  
+  // Initialisation des services
+  final databaseService = DatabaseService();
+  final repasService = RepasService();
+  await databaseService.initializeDatabase();
+  await repasService.initialiserTable();
   
   // Configuration du logger
   Logger.root.level = Level.ALL;

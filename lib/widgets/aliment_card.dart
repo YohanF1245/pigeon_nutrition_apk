@@ -68,17 +68,6 @@ class AlimentCard extends StatelessWidget {
                               ),
                             ),
                           ],
-                          if (aliment.gestionStock && (aliment.unitePortionLabel != null || aliment.unite.symbole.isNotEmpty)) ...[
-                            const SizedBox(width: 8),
-                            Text(
-                              aliment.getStockLabel(),
-                              style: TextStyle(
-                                color: Colors.grey[600],
-                                fontSize: 12,
-                                fontStyle: FontStyle.italic,
-                              ),
-                            ),
-                          ],
                         ],
                       ),
                     ],

@@ -81,9 +81,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
     final repas = await _storageService.getRepas();
     final aujourdhui = DateTime.now();
     final repasAujourdhui = repas.where((r) => 
-      r.date.year == aujourdhui.year && 
-      r.date.month == aujourdhui.month && 
-      r.date.day == aujourdhui.day
+      r.dateHeure.year == aujourdhui.year && 
+      r.dateHeure.month == aujourdhui.month && 
+      r.dateHeure.day == aujourdhui.day
     ).toList();
 
     double calories = 0;
@@ -91,15 +91,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
     double lipides = 0;
     double glucides = 0;
 
+    final aliments = await _alimentService.getAllAliments();
+
     for (final repas in repasAujourdhui) {
-      calories += repas.aliments.fold(0, (sum, a) {
-        double facteur = a.quantite / 100;
-        if (a.unite == 'kg') facteur *= 1000;
-        return sum + (a.aliment.calories * facteur);
-      });
-      proteines += repas.totalProteines;
-      lipides += repas.totalLipides;
-      glucides += repas.totalGlucides;
+      final nutriments = await repas.calculerNutriments(aliments);
+      calories += nutriments['calories'] ?? 0;
+      proteines += nutriments['proteines'] ?? 0;
+      lipides += nutriments['lipides'] ?? 0;
+      glucides += nutriments['glucides'] ?? 0;
     }
 
     return {

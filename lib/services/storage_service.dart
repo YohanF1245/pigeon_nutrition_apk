@@ -5,8 +5,18 @@ import '../models/repas.dart';
 import '../models/entrainement.dart';
 import '../models/mesures_corporelles.dart';
 import '../models/parametres_nutritionnels.dart';
+import 'repas_service.dart';
 
 class StorageService {
+  static final StorageService _instance = StorageService._internal();
+  final _repasService = RepasService();
+
+  factory StorageService() {
+    return _instance;
+  }
+
+  StorageService._internal();
+
   static const String _keyAliments = 'aliments';
   static const String _keyRepas = 'repas';
   static const String _keyEntrainements = 'entrainements';
@@ -51,40 +61,16 @@ class StorageService {
   }
 
   // Méthodes pour les repas
-  Future<void> saveRepas(List<Repas> repas) async {
-    final prefs = await SharedPreferences.getInstance();
-    final repasJson = repas.map((r) => r.toMap()).toList();
-    await prefs.setString(_keyRepas, jsonEncode(repasJson));
-  }
-
   Future<List<Repas>> getRepas() async {
-    final prefs = await SharedPreferences.getInstance();
-    final repasJson = prefs.getString(_keyRepas);
-    if (repasJson == null) return [];
-    
-    final List<dynamic> decoded = jsonDecode(repasJson);
-    return decoded.map((json) => Repas.fromMap(json)).toList();
+    return await _repasService.getRepas();
   }
 
-  Future<void> addRepas(Repas repas) async {
-    final listeRepas = await getRepas();
-    listeRepas.add(repas);
-    await saveRepas(listeRepas);
-  }
-
-  Future<void> updateRepas(Repas repas) async {
-    final listeRepas = await getRepas();
-    final index = listeRepas.indexWhere((r) => r.id == repas.id);
-    if (index != -1) {
-      listeRepas[index] = repas;
-      await saveRepas(listeRepas);
-    }
+  Future<void> saveRepas(Repas repas) async {
+    await _repasService.sauvegarderRepas(repas);
   }
 
   Future<void> deleteRepas(String id) async {
-    final listeRepas = await getRepas();
-    listeRepas.removeWhere((r) => r.id == id);
-    await saveRepas(listeRepas);
+    await _repasService.supprimerRepas(id);
   }
 
   // Méthodes pour les entraînements
@@ -175,15 +161,13 @@ class StorageService {
   // Méthodes pour les paramètres nutritionnels
   Future<ParametresNutritionnels?> getParametresNutritionnels() async {
     final prefs = await SharedPreferences.getInstance();
-    final parametresJson = prefs.getString(_keyParametresNutritionnels);
+    final String? parametresJson = prefs.getString('parametres_nutritionnels');
     if (parametresJson == null) return null;
-    
-    final Map<String, dynamic> decoded = jsonDecode(parametresJson);
-    return ParametresNutritionnels.fromMap(decoded);
+    return ParametresNutritionnels.fromMap(jsonDecode(parametresJson));
   }
 
   Future<void> saveParametresNutritionnels(ParametresNutritionnels parametres) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_keyParametresNutritionnels, jsonEncode(parametres.toMap()));
+    await prefs.setString('parametres_nutritionnels', jsonEncode(parametres.toMap()));
   }
 } 

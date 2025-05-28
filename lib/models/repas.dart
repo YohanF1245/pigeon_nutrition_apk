@@ -1,86 +1,85 @@
+import 'package:uuid/uuid.dart';
 import 'aliment.dart';
 
 class RepasAliment {
-  final Aliment aliment;
+  final String alimentId;
   final double quantite;
-  final String unite;
-  final bool estEnPortion; // Indique si la quantité est en portions ou en grammes
 
   RepasAliment({
-    required this.aliment,
+    required this.alimentId,
     required this.quantite,
-    required this.unite,
-    this.estEnPortion = false,
   });
-
-  // Obtenir la quantité en grammes pour les calculs
-  double get quantiteEnGrammes {
-    if (!estEnPortion || aliment.poidsUnitaire == null) return quantite;
-    return quantite * aliment.poidsUnitaire!;
-  }
 
   Map<String, dynamic> toMap() {
     return {
-      'aliment': aliment.toMap(),
+      'alimentId': alimentId,
       'quantite': quantite,
-      'unite': unite,
-      'estEnPortion': estEnPortion,
     };
   }
 
   factory RepasAliment.fromMap(Map<String, dynamic> map) {
     return RepasAliment(
-      aliment: Aliment.fromMap(map['aliment']),
+      alimentId: map['alimentId'],
       quantite: map['quantite'],
-      unite: map['unite'],
-      estEnPortion: map['estEnPortion'] ?? false,
     );
   }
 }
 
 class Repas {
-  String id;
+  final String id;
   String nom;
+  DateTime dateHeure;
   List<RepasAliment> aliments;
-  DateTime date;
-  String type; // 'petit-déjeuner', 'déjeuner', 'dîner', 'collation'
+  Map<String, double>? nutrimentsCaches;
 
   Repas({
-    required this.id,
+    String? id,
     required this.nom,
+    required this.dateHeure,
     required this.aliments,
-    required this.date,
-    required this.type,
-  });
+    this.nutrimentsCaches,
+  }) : id = id ?? const Uuid().v4();
 
-  double get totalProteines {
-    return aliments.fold(0, (sum, repasAliment) {
-      double facteur = repasAliment.quantiteEnGrammes / 100;
-      return sum + (repasAliment.aliment.proteines * facteur);
-    });
-  }
+  // Méthodes de calcul des nutriments
+  Future<Map<String, double>> calculerNutriments(List<Aliment> alimentsDisponibles) async {
+    if (nutrimentsCaches != null) return nutrimentsCaches!;
 
-  double get totalLipides {
-    return aliments.fold(0, (sum, repasAliment) {
-      double facteur = repasAliment.quantiteEnGrammes / 100;
-      return sum + (repasAliment.aliment.lipides * facteur);
-    });
-  }
+    double calories = 0;
+    double proteines = 0;
+    double lipides = 0;
+    double glucides = 0;
 
-  double get totalGlucides {
-    return aliments.fold(0, (sum, repasAliment) {
-      double facteur = repasAliment.quantiteEnGrammes / 100;
-      return sum + (repasAliment.aliment.glucides * facteur);
-    });
+    for (var repasAliment in aliments) {
+      final aliment = alimentsDisponibles.firstWhere(
+        (a) => a.id == repasAliment.alimentId,
+        orElse: () => throw Exception('Aliment non trouvé: ${repasAliment.alimentId}'),
+      );
+
+      // Calcul en fonction de la quantité
+      final ratio = repasAliment.quantite / 100; // Les nutriments sont pour 100g/ml
+      calories += aliment.calories * ratio;
+      proteines += aliment.proteines * ratio;
+      lipides += aliment.lipides * ratio;
+      glucides += aliment.glucides * ratio;
+    }
+
+    nutrimentsCaches = {
+      'calories': calories,
+      'proteines': proteines,
+      'lipides': lipides,
+      'glucides': glucides,
+    };
+
+    return nutrimentsCaches!;
   }
 
   Map<String, dynamic> toMap() {
     return {
       'id': id,
       'nom': nom,
+      'dateHeure': dateHeure.toIso8601String(),
       'aliments': aliments.map((a) => a.toMap()).toList(),
-      'date': date.toIso8601String(),
-      'type': type,
+      'nutrimentsCaches': nutrimentsCaches,
     };
   }
 
@@ -88,11 +87,28 @@ class Repas {
     return Repas(
       id: map['id'],
       nom: map['nom'],
+      dateHeure: DateTime.parse(map['dateHeure']),
       aliments: (map['aliments'] as List)
-          .map((a) => RepasAliment.fromMap(a))
+          .map((a) => RepasAliment.fromMap(a as Map<String, dynamic>))
           .toList(),
-      date: DateTime.parse(map['date']),
-      type: map['type'],
+      nutrimentsCaches: map['nutrimentsCaches'] != null
+          ? Map<String, double>.from(map['nutrimentsCaches'])
+          : null,
+    );
+  }
+
+  // Clone le repas avec de nouvelles valeurs optionnelles
+  Repas copyWith({
+    String? nom,
+    DateTime? dateHeure,
+    List<RepasAliment>? aliments,
+  }) {
+    return Repas(
+      id: id, // On garde le même ID
+      nom: nom ?? this.nom,
+      dateHeure: dateHeure ?? this.dateHeure,
+      aliments: aliments ?? List.from(this.aliments),
+      nutrimentsCaches: null, // On reset le cache car les données peuvent avoir changé
     );
   }
 } 

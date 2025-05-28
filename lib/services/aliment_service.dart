@@ -24,7 +24,18 @@ class AlimentService {
   }
 
   Future<void> deleteAliment(String id) async {
-    await _databaseService.deleteAliment(id);
+    try {
+      final db = await _databaseService.database;
+      await db.delete(
+        'aliments',
+        where: 'id = ?',
+        whereArgs: [id],
+      );
+      _logger.info('Aliment supprimé avec succès');
+    } catch (e) {
+      _logger.severe('Erreur lors de la suppression de l\'aliment: $e');
+      rethrow;
+    }
   }
 
   Future<void> ajusterStock(String id, double quantite) async {
@@ -48,8 +59,10 @@ class AlimentService {
       
       // Si l'aliment a une unité de portion, ajuster en fonction du poids unitaire
       if (aliment.unitePortionLabel != null && aliment.poidsUnitaire != null) {
+        // Pour les aliments gérés par portions, la quantité représente le nombre de portions
         nouvelleQuantite = aliment.quantiteStock + quantite;
       } else {
+        // Pour les aliments gérés en grammes/ml, ajout direct
         nouvelleQuantite = aliment.quantiteStock + quantite;
       }
       
@@ -105,6 +118,48 @@ class AlimentService {
       }).toList();
     } catch (e) {
       _logger.severe('Erreur lors de la récupération de la liste des courses: $e');
+      rethrow;
+    }
+  }
+
+  Future<void> updateStock(String alimentId, double quantite, Transaction? transaction) async {
+    try {
+      final db = transaction ?? await _databaseService.database;
+      
+      // Récupérer d'abord l'aliment pour vérifier s'il est géré par portions
+      final List<Map<String, dynamic>> maps = await db.query(
+        'aliments',
+        where: 'id = ?',
+        whereArgs: [alimentId],
+      );
+      
+      if (maps.isEmpty) {
+        throw Exception('Aliment non trouvé');
+      }
+      
+      final aliment = Aliment.fromMap(maps.first);
+      double quantiteAjustee = quantite;
+      
+      // Si l'aliment est géré par portions, convertir la quantité en grammes en nombre de portions
+      if (aliment.unitePortionLabel != null && aliment.poidsUnitaire != null && aliment.poidsUnitaire! > 0) {
+        quantiteAjustee = quantite / aliment.poidsUnitaire!;
+      }
+
+      final query = '''
+        UPDATE aliments 
+        SET quantiteStock = quantiteStock + ? 
+        WHERE id = ? AND gestionStock = 1
+      ''';
+
+      if (transaction != null) {
+        await transaction.rawUpdate(query, [quantiteAjustee, alimentId]);
+      } else {
+        await db.rawUpdate(query, [quantiteAjustee, alimentId]);
+      }
+
+      _logger.info('Stock mis à jour pour l\'aliment $alimentId: $quantiteAjustee');
+    } catch (e) {
+      _logger.severe('Erreur lors de la mise à jour du stock: $e');
       rethrow;
     }
   }

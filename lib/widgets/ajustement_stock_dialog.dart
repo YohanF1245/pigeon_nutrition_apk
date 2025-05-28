@@ -42,15 +42,6 @@ class _AjustementStockDialogState extends State<AjustementStockDialog> {
                 'Stock actuel: ${widget.aliment.getStockDisplay()}',
                 style: const TextStyle(fontSize: 16),
               ),
-              if (widget.aliment.unitePortionLabel != null)
-                Text(
-                  widget.aliment.getStockLabel(),
-                  style: const TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey,
-                    fontStyle: FontStyle.italic,
-                  ),
-                ),
               const SizedBox(height: 24),
               const Text('Opération:', style: TextStyle(fontSize: 16)),
               const SizedBox(height: 8),
@@ -95,7 +86,6 @@ class _AjustementStockDialogState extends State<AjustementStockDialog> {
                   labelText: 'Quantité à ${_isAddition ? 'ajouter' : 'retirer'}',
                   suffixText: widget.aliment.unitePortionLabel ?? widget.aliment.unite.symbole,
                   border: const OutlineInputBorder(),
-                  helperText: widget.aliment.getStockLabel(),
                 ),
                 keyboardType: const TextInputType.numberWithOptions(decimal: true),
               ),

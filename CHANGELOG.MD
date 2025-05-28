@@ -5,6 +5,16 @@ Toutes les modifications notables de ce projet seront documentées dans ce fichi
 Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 et ce projet adhère au [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.2.0] - En développement
+
+### En cours
+- Système de gestion des repas
+  - Interface en trois parties (macros/planning/liste des repas)
+  - Vue des macronutriments journaliers avec objectifs
+  - Calendrier interactif avec planification horaire
+  - Gestion des repas avec impact sur le stock
+  - Détails nutritionnels complets par repas
+
 ## [0.1.2] - 2024-03-22
 
 ### Ajouté
@@ -35,4 +45,11 @@ et ce projet adhère au [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - Système de gestion des aliments
 - Gestion des stocks
 - Calcul des valeurs nutritionnelles
-- Interface utilisateur de base 
+- Interface utilisateur de base
+
+## [Non Publié]
+
+### Corrections de Bugs
+- Correction du bug de TextEditingController dans l'écran d'ajout de repas
+  - Amélioration de la gestion du cycle de vie des contrôleurs
+  - Prévention des erreurs de disposition des contrôleurs 

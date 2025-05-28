@@ -5,6 +5,14 @@ Toutes les modifications notables de ce projet seront documentées dans ce fichi
 Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 et ce projet adhère au [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.1.2] - 2024-03-22
+
+### Ajouté
+- Système d'export/import de la base de données
+  - Export de la base SQLite vers un fichier partageable
+  - Import d'une base de données existante avec vérifications de sécurité
+  - Interface utilisateur intégrée dans les paramètres de l'application
+
 ## [0.1.1] - 2024-03-21
 
 ### Ajouté

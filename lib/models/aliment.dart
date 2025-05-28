@@ -138,14 +138,6 @@ class Aliment {
     return '${quantiteStock.toStringAsFixed(1)} ${unite.symbole}';
   }
 
-  String getStockLabel() {
-    if (!gestionStock) return '';
-    if (unitePortionLabel != null) {
-      return 'Stock (en ${unitePortionLabel!.toLowerCase()})';
-    }
-    return 'Stock (en ${unite.symbole})';
-  }
-
   // Vérifier si le stock est bas
   bool get stockBas {
     if (!gestionStock || seuilAlerte == null) return false;

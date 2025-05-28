@@ -3,6 +3,7 @@ import 'package:uuid/uuid.dart';
 import '../models/parametres_nutritionnels.dart';
 import '../services/storage_service.dart';
 import '../theme/app_theme.dart';
+import '../widgets/database_management_section.dart';
 
 class ParametresNutritionnelsScreen extends StatefulWidget {
   const ParametresNutritionnelsScreen({super.key});
@@ -228,307 +229,315 @@ class _ParametresNutritionnelsScreenState extends State<ParametresNutritionnelsS
     return Scaffold(
       appBar: AppBar(
         title: const Text('Paramètres'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.save),
+            onPressed: _sauvegarderParametres,
+          ),
+        ],
       ),
-      body: Form(
-        key: _formKey,
-        child: ListView(
-          padding: const EdgeInsets.all(16),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            _buildSectionTitle('Données Physiques'),
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  children: [
-                    TextFormField(
-                      controller: _poidsController,
-                      decoration: const InputDecoration(
-                        labelText: 'Poids (kg)',
-                        suffixText: 'kg',
+            Form(
+              key: _formKey,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  _buildSectionTitle('Données Physiques'),
+                  Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        children: [
+                          TextFormField(
+                            controller: _poidsController,
+                            decoration: const InputDecoration(
+                              labelText: 'Poids (kg)',
+                              suffixText: 'kg',
+                            ),
+                            keyboardType: TextInputType.number,
+                            onTap: () {
+                              _poidsController.selection = TextSelection(
+                                baseOffset: 0,
+                                extentOffset: _poidsController.text.length,
+                              );
+                            },
+                            validator: (value) {
+                              if (value == null || value.isEmpty) {
+                                return 'Veuillez entrer votre poids';
+                              }
+                              final poids = double.tryParse(value);
+                              if (poids == null || poids <= 0) {
+                                return 'Veuillez entrer un poids valide';
+                              }
+                              return null;
+                            },
+                            onChanged: (value) {
+                              if (value.isNotEmpty) {
+                                final poids = double.tryParse(value);
+                                if (poids != null) {
+                                  setState(() => _poids = poids);
+                                }
+                              }
+                            },
+                            onSaved: (value) => _poids = double.parse(value!),
+                          ),
+                          const SizedBox(height: 16),
+                          TextFormField(
+                            controller: _tailleController,
+                            decoration: const InputDecoration(
+                              labelText: 'Taille (cm)',
+                              suffixText: 'cm',
+                            ),
+                            keyboardType: TextInputType.number,
+                            onTap: () {
+                              _tailleController.selection = TextSelection(
+                                baseOffset: 0,
+                                extentOffset: _tailleController.text.length,
+                              );
+                            },
+                            validator: (value) {
+                              if (value == null || value.isEmpty) {
+                                return 'Veuillez entrer votre taille';
+                              }
+                              final taille = double.tryParse(value);
+                              if (taille == null || taille <= 0) {
+                                return 'Veuillez entrer une taille valide';
+                              }
+                              return null;
+                            },
+                            onChanged: (value) {
+                              if (value.isNotEmpty) {
+                                final taille = double.tryParse(value);
+                                if (taille != null) {
+                                  setState(() => _taille = taille);
+                                }
+                              }
+                            },
+                            onSaved: (value) => _taille = double.parse(value!),
+                          ),
+                          const SizedBox(height: 16),
+                          TextFormField(
+                            controller: _ageController,
+                            decoration: const InputDecoration(
+                              labelText: 'Âge',
+                              suffixText: 'ans',
+                            ),
+                            keyboardType: TextInputType.number,
+                            onTap: () {
+                              _ageController.selection = TextSelection(
+                                baseOffset: 0,
+                                extentOffset: _ageController.text.length,
+                              );
+                            },
+                            validator: (value) {
+                              if (value == null || value.isEmpty) {
+                                return 'Veuillez entrer votre âge';
+                              }
+                              final age = int.tryParse(value);
+                              if (age == null || age <= 0) {
+                                return 'Veuillez entrer un âge valide';
+                              }
+                              return null;
+                            },
+                            onChanged: (value) {
+                              if (value.isNotEmpty) {
+                                final age = int.tryParse(value);
+                                if (age != null) {
+                                  setState(() => _age = age);
+                                }
+                              }
+                            },
+                            onSaved: (value) => _age = int.parse(value!),
+                          ),
+                          const SizedBox(height: 16),
+                          DropdownButtonFormField<String>(
+                            value: _sexe,
+                            decoration: const InputDecoration(
+                              labelText: 'Sexe',
+                            ),
+                            items: const [
+                              DropdownMenuItem(value: 'homme', child: Text('Homme')),
+                              DropdownMenuItem(value: 'femme', child: Text('Femme')),
+                            ],
+                            onChanged: (value) => setState(() => _sexe = value!),
+                          ),
+                          const SizedBox(height: 16),
+                          DropdownButtonFormField<String>(
+                            value: _niveauActivite,
+                            decoration: const InputDecoration(
+                              labelText: 'Niveau d\'activité',
+                            ),
+                            items: const [
+                              DropdownMenuItem(
+                                value: 'sedentaire',
+                                child: Text('Sédentaire (peu ou pas d\'exercice)'),
+                              ),
+                              DropdownMenuItem(
+                                value: 'leger',
+                                child: Text('Léger (exercice 1-3 fois/semaine)'),
+                              ),
+                              DropdownMenuItem(
+                                value: 'modere',
+                                child: Text('Modéré (exercice 3-5 fois/semaine)'),
+                              ),
+                              DropdownMenuItem(
+                                value: 'intense',
+                                child: Text('Intense (exercice 6-7 fois/semaine)'),
+                              ),
+                              DropdownMenuItem(
+                                value: 'tres_intense',
+                                child: Text('Très intense (exercice quotidien)'),
+                              ),
+                            ],
+                            onChanged: (value) => setState(() => _niveauActivite = value!),
+                          ),
+                          const SizedBox(height: 16),
+                          DropdownButtonFormField<String>(
+                            value: _objectif,
+                            decoration: const InputDecoration(
+                              labelText: 'Objectif',
+                              helperText: 'Votre objectif déterminera la répartition recommandée des macronutriments',
+                            ),
+                            items: const [
+                              DropdownMenuItem(
+                                value: 'perte',
+                                child: Text('Perte de poids'),
+                              ),
+                              DropdownMenuItem(
+                                value: 'maintien',
+                                child: Text('Maintien du poids'),
+                              ),
+                              DropdownMenuItem(
+                                value: 'prise',
+                                child: Text('Prise de masse'),
+                              ),
+                            ],
+                            onChanged: (value) {
+                              setState(() {
+                                _objectif = value!;
+                                _calculerMacrosAutomatiques();
+                              });
+                            },
+                          ),
+                        ],
                       ),
-                      keyboardType: TextInputType.number,
-                      onTap: () {
-                        _poidsController.selection = TextSelection(
-                          baseOffset: 0,
-                          extentOffset: _poidsController.text.length,
-                        );
-                      },
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Veuillez entrer votre poids';
-                        }
-                        final poids = double.tryParse(value);
-                        if (poids == null || poids <= 0) {
-                          return 'Veuillez entrer un poids valide';
-                        }
-                        return null;
-                      },
-                      onChanged: (value) {
-                        if (value.isNotEmpty) {
-                          final poids = double.tryParse(value);
-                          if (poids != null) {
-                            setState(() => _poids = poids);
-                          }
-                        }
-                      },
-                      onSaved: (value) => _poids = double.parse(value!),
                     ),
-                    const SizedBox(height: 16),
-                    TextFormField(
-                      controller: _tailleController,
-                      decoration: const InputDecoration(
-                        labelText: 'Taille (cm)',
-                        suffixText: 'cm',
-                      ),
-                      keyboardType: TextInputType.number,
-                      onTap: () {
-                        _tailleController.selection = TextSelection(
-                          baseOffset: 0,
-                          extentOffset: _tailleController.text.length,
-                        );
-                      },
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Veuillez entrer votre taille';
-                        }
-                        final taille = double.tryParse(value);
-                        if (taille == null || taille <= 0) {
-                          return 'Veuillez entrer une taille valide';
-                        }
-                        return null;
-                      },
-                      onChanged: (value) {
-                        if (value.isNotEmpty) {
-                          final taille = double.tryParse(value);
-                          if (taille != null) {
-                            setState(() => _taille = taille);
-                          }
-                        }
-                      },
-                      onSaved: (value) => _taille = double.parse(value!),
-                    ),
-                    const SizedBox(height: 16),
-                    TextFormField(
-                      controller: _ageController,
-                      decoration: const InputDecoration(
-                        labelText: 'Âge',
-                        suffixText: 'ans',
-                      ),
-                      keyboardType: TextInputType.number,
-                      onTap: () {
-                        _ageController.selection = TextSelection(
-                          baseOffset: 0,
-                          extentOffset: _ageController.text.length,
-                        );
-                      },
-                      validator: (value) {
-                        if (value == null || value.isEmpty) {
-                          return 'Veuillez entrer votre âge';
-                        }
-                        final age = int.tryParse(value);
-                        if (age == null || age <= 0) {
-                          return 'Veuillez entrer un âge valide';
-                        }
-                        return null;
-                      },
-                      onChanged: (value) {
-                        if (value.isNotEmpty) {
-                          final age = int.tryParse(value);
-                          if (age != null) {
-                            setState(() => _age = age);
-                          }
-                        }
-                      },
-                      onSaved: (value) => _age = int.parse(value!),
-                    ),
-                    const SizedBox(height: 16),
-                    DropdownButtonFormField<String>(
-                      value: _sexe,
-                      decoration: const InputDecoration(
-                        labelText: 'Sexe',
-                      ),
-                      items: const [
-                        DropdownMenuItem(value: 'homme', child: Text('Homme')),
-                        DropdownMenuItem(value: 'femme', child: Text('Femme')),
-                      ],
-                      onChanged: (value) => setState(() => _sexe = value!),
-                    ),
-                    const SizedBox(height: 16),
-                    DropdownButtonFormField<String>(
-                      value: _niveauActivite,
-                      decoration: const InputDecoration(
-                        labelText: 'Niveau d\'activité',
-                      ),
-                      items: const [
-                        DropdownMenuItem(
-                          value: 'sedentaire',
-                          child: Text('Sédentaire (peu ou pas d\'exercice)'),
-                        ),
-                        DropdownMenuItem(
-                          value: 'leger',
-                          child: Text('Léger (exercice 1-3 fois/semaine)'),
-                        ),
-                        DropdownMenuItem(
-                          value: 'modere',
-                          child: Text('Modéré (exercice 3-5 fois/semaine)'),
-                        ),
-                        DropdownMenuItem(
-                          value: 'intense',
-                          child: Text('Intense (exercice 6-7 fois/semaine)'),
-                        ),
-                        DropdownMenuItem(
-                          value: 'tres_intense',
-                          child: Text('Très intense (exercice quotidien)'),
-                        ),
-                      ],
-                      onChanged: (value) => setState(() => _niveauActivite = value!),
-                    ),
-                    const SizedBox(height: 16),
-                    DropdownButtonFormField<String>(
-                      value: _objectif,
-                      decoration: const InputDecoration(
-                        labelText: 'Objectif',
-                        helperText: 'Votre objectif déterminera la répartition recommandée des macronutriments',
-                      ),
-                      items: const [
-                        DropdownMenuItem(
-                          value: 'perte',
-                          child: Text('Perte de poids'),
-                        ),
-                        DropdownMenuItem(
-                          value: 'maintien',
-                          child: Text('Maintien du poids'),
-                        ),
-                        DropdownMenuItem(
-                          value: 'prise',
-                          child: Text('Prise de masse'),
-                        ),
-                      ],
-                      onChanged: (value) {
-                        setState(() {
-                          _objectif = value!;
-                          _calculerMacrosAutomatiques();
-                        });
-                      },
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            const SizedBox(height: 24),
-            _buildSectionTitle('Objectifs Macronutriments'),
-            Card(
-              child: Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  children: [
-                    SwitchListTile(
-                      title: const Text('Calcul automatique'),
-                      subtitle: const Text(
-                        'Laissez l\'application optimiser la répartition des macronutriments selon votre objectif',
-                      ),
-                      value: _calculAutomatique,
-                      onChanged: (value) {
-                        setState(() {
-                          _calculAutomatique = value;
-                          if (value) {
-                            _calculerMacrosAutomatiques();
-                          }
-                        });
-                      },
-                    ),
-                    const Divider(),
-                    _buildSlider(
-                      label: 'Protéines',
-                      value: _objectifProteines,
-                      onChanged: _calculAutomatique ? null : (value) {
-                        final maxProteines = 100 - _objectifLipides;
-                        if (value <= maxProteines) {
-                          setState(() {
-                            _objectifProteines = value;
-                            _objectifGlucides = maxProteines - value;
-                          });
-                        }
-                      },
-                      maxValue: 100 - _objectifLipides,
-                      description: 'Essentielles pour la croissance et la réparation musculaire',
-                    ),
-                    _buildSlider(
-                      label: 'Lipides',
-                      value: _objectifLipides,
-                      onChanged: _calculAutomatique ? null : (value) {
-                        final maxLipides = 100 - _objectifProteines;
-                        if (value <= maxLipides) {
-                          setState(() {
-                            _objectifLipides = value;
-                            _objectifGlucides = maxLipides - value;
-                          });
-                        }
-                      },
-                      maxValue: 100 - _objectifProteines,
-                      description: 'Importants pour les hormones et l\'absorption des vitamines',
-                    ),
-                    _buildSlider(
-                      label: 'Glucides',
-                      value: _objectifGlucides,
-                      enabled: false,
-                      maxValue: 100,
-                      description: 'Principale source d\'énergie',
-                    ),
-                  ],
-                ),
-              ),
-            ),
-            if (_parametres != null) ...[
-              const SizedBox(height: 24),
-              _buildSectionTitle('Valeurs Calculées'),
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Column(
-                    children: [
-                      _buildCalculatedValue(
-                        'TMB',
-                        '${_parametres!.tmb.round()} kcal',
-                        'Taux Métabolique de Base',
-                      ),
-                      const Divider(),
-                      _buildCalculatedValue(
-                        'Calories Quotidiennes',
-                        '${_parametres!.caloriesQuotidiennes.round()} kcal',
-                        'Besoin énergétique total',
-                      ),
-                      const Divider(),
-                      _buildCalculatedValue(
-                        'Protéines',
-                        '${_parametres!.objectifProteinesGrammes.round()}g',
-                        '${_parametres!.objectifProteines}% des calories',
-                      ),
-                      const Divider(),
-                      _buildCalculatedValue(
-                        'Lipides',
-                        '${_parametres!.objectifLipidesGrammes.round()}g',
-                        '${_parametres!.objectifLipides}% des calories',
-                      ),
-                      const Divider(),
-                      _buildCalculatedValue(
-                        'Glucides',
-                        '${_parametres!.objectifGlucidesGrammes.round()}g',
-                        '${_parametres!.objectifGlucides}% des calories',
-                      ),
-                    ],
                   ),
-                ),
-              ),
-            ],
-            const SizedBox(height: 24),
-            SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: _sauvegarderParametres,
-                child: const Text('Sauvegarder'),
+                  const SizedBox(height: 24),
+                  _buildSectionTitle('Objectifs Macronutriments'),
+                  Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Column(
+                        children: [
+                          SwitchListTile(
+                            title: const Text('Calcul automatique'),
+                            subtitle: const Text(
+                              'Laissez l\'application optimiser la répartition des macronutriments selon votre objectif',
+                            ),
+                            value: _calculAutomatique,
+                            onChanged: (value) {
+                              setState(() {
+                                _calculAutomatique = value;
+                                if (value) {
+                                  _calculerMacrosAutomatiques();
+                                }
+                              });
+                            },
+                          ),
+                          const Divider(),
+                          _buildSlider(
+                            label: 'Protéines',
+                            value: _objectifProteines,
+                            onChanged: _calculAutomatique ? null : (value) {
+                              final maxProteines = 100 - _objectifLipides;
+                              if (value <= maxProteines) {
+                                setState(() {
+                                  _objectifProteines = value;
+                                  _objectifGlucides = maxProteines - value;
+                                });
+                              }
+                            },
+                            maxValue: 100 - _objectifLipides,
+                            description: 'Essentielles pour la croissance et la réparation musculaire',
+                          ),
+                          _buildSlider(
+                            label: 'Lipides',
+                            value: _objectifLipides,
+                            onChanged: _calculAutomatique ? null : (value) {
+                              final maxLipides = 100 - _objectifProteines;
+                              if (value <= maxLipides) {
+                                setState(() {
+                                  _objectifLipides = value;
+                                  _objectifGlucides = maxLipides - value;
+                                });
+                              }
+                            },
+                            maxValue: 100 - _objectifProteines,
+                            description: 'Importants pour les hormones et l\'absorption des vitamines',
+                          ),
+                          _buildSlider(
+                            label: 'Glucides',
+                            value: _objectifGlucides,
+                            enabled: false,
+                            maxValue: 100,
+                            description: 'Principale source d\'énergie',
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  if (_parametres != null) ...[
+                    const SizedBox(height: 24),
+                    _buildSectionTitle('Valeurs Calculées'),
+                    Card(
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Column(
+                          children: [
+                            _buildCalculatedValue(
+                              'TMB',
+                              '${_parametres!.tmb.round()} kcal',
+                              'Taux Métabolique de Base',
+                            ),
+                            const Divider(),
+                            _buildCalculatedValue(
+                              'Calories Quotidiennes',
+                              '${_parametres!.caloriesQuotidiennes.round()} kcal',
+                              'Besoin énergétique total',
+                            ),
+                            const Divider(),
+                            _buildCalculatedValue(
+                              'Protéines',
+                              '${_parametres!.objectifProteinesGrammes.round()}g',
+                              '${_parametres!.objectifProteines}% des calories',
+                            ),
+                            const Divider(),
+                            _buildCalculatedValue(
+                              'Lipides',
+                              '${_parametres!.objectifLipidesGrammes.round()}g',
+                              '${_parametres!.objectifLipides}% des calories',
+                            ),
+                            const Divider(),
+                            _buildCalculatedValue(
+                              'Glucides',
+                              '${_parametres!.objectifGlucidesGrammes.round()}g',
+                              '${_parametres!.objectifGlucides}% des calories',
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
               ),
             ),
+            const SizedBox(height: 24),
+            DatabaseManagementSection(),
           ],
         ),
       ),

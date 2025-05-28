@@ -22,15 +22,23 @@ class DatabaseService {
   }
 
   Future<Database> _initDatabase() async {
-    final databasesPath = await getDatabasesPath();
-    final path = join(databasesPath, 'pigeon_nutrition.db');
-
+    final path = await getDatabasePath();
     return await openDatabase(
       path,
-      version: 2, // Incrémentation de la version
+      version: 1,
       onCreate: _onCreate,
-      onUpgrade: _onUpgrade,
     );
+  }
+
+  Future<String> getDatabasePath() async {
+    final databasesPath = await getDatabasesPath();
+    return join(databasesPath, 'pigeon_nutrition.db');
+  }
+
+  Future<void> close() async {
+    final db = await database;
+    await db.close();
+    _database = null;
   }
 
   Future<void> _onCreate(Database db, int version) async {

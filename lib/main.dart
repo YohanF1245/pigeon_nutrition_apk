@@ -260,6 +260,23 @@ class _MainScreenState extends State<MainScreen> {
                   },
                   isDrawer: true,
                   onClose: _toggleListeCourses,
+                  onStockUpdated: () {
+                    // Recréer le dashboard pour forcer un rafraîchissement complet
+                    setState(() {
+                      _screens[0] = DashboardScreen(
+                        onAlimentsEnRuptureChanged: (aliments) {
+                          Future.microtask(() {
+                            if (mounted) {
+                              setState(() {
+                                _alimentsEnRupture = aliments;
+                                _listeCoursesCheckedState.clear();
+                              });
+                            }
+                          });
+                        },
+                      );
+                    });
+                  },
                 ),
               ),
             ),

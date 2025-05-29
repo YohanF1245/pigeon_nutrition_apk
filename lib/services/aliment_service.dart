@@ -29,13 +29,42 @@ class AlimentService {
     try {
       final db = await _databaseService.database;
       
-      // Supprimer l'aliment
-      await db.delete(
-        'aliments',
-        where: 'id = ?',
-        whereArgs: [alimentId],
-      );
-      _logger.info('Aliment supprimé avec succès');
+      // Récupérer d'abord les repas qui utilisent cet aliment
+      final repasAffectes = await getRepasUtilisantAliment(alimentId);
+      
+      await db.transaction((txn) async {
+        // Pour chaque repas affecté
+        for (var repas in repasAffectes) {
+          // Supprimer d'abord les jours_repas associés
+          await txn.delete(
+            'jours_repas',
+            where: 'repasId = ?',
+            whereArgs: [repas.id],
+          );
+          
+          // Supprimer ensuite le repas et ses associations
+          await txn.delete(
+            'repas_aliments',
+            where: 'repasId = ?',
+            whereArgs: [repas.id],
+          );
+          
+          await txn.delete(
+            'repas',
+            where: 'id = ?',
+            whereArgs: [repas.id],
+          );
+        }
+        
+        // Enfin, supprimer l'aliment
+        await txn.delete(
+          'aliments',
+          where: 'id = ?',
+          whereArgs: [alimentId],
+        );
+      });
+      
+      _logger.info('Aliment et repas associés supprimés avec succès');
     } catch (e) {
       _logger.severe('Erreur lors de la suppression de l\'aliment: $e');
       rethrow;

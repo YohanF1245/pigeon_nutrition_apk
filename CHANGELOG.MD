@@ -24,6 +24,8 @@ et ce projet adhère au [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   - Affichage des valeurs nutritionnelles de l'aliment
   - Liste des repas impactés par la suppression
   - Avertissement visuel sur l'impact de la suppression
+  - Suppression en cascade des repas et jours associés
+  - Nettoyage automatique des références dans l'agenda
 - Confirmation détaillée lors de la suppression d'un repas de l'agenda avec affichage de l'impact nutritionnel
 - Avertissement lors de la suppression d'un aliment utilisé dans des repas
 - Suppression automatique des repas liés à un aliment supprimé
@@ -34,6 +36,13 @@ et ce projet adhère au [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   - Mise à jour automatique de l'agenda lors de la suppression d'un repas
 
 ### Améliorations
+- Optimisation de la plage horaire de l'agenda (6h-23h)
+- Correction des noms de colonnes dans la base de données
+- Amélioration de la gestion des suppressions :
+  - Suppression en cascade des repas lors de la suppression d'un aliment
+  - Nettoyage automatique des références dans l'agenda
+  - Transaction unique pour garantir l'intégrité des données
+- Correction de la quantité d'achat par défaut dans la liste de courses
 - Optimisation de l'agenda :
   - Plage horaire réduite de 6h à 23h pour une meilleure lisibilité
   - Format d'affichage des heures uniformisé (ex: "06:00" au lieu de "6:00")

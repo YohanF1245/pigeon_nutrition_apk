@@ -51,7 +51,7 @@ class RepasService {
           'id': repas.id,
           'nom': repas.nom,
           'nutrimentsCaches': repas.nutrimentsCaches != null 
-              ? repas.nutrimentsCaches.toString() 
+              ? repas.nutrimentsCaches!.toString() 
               : null,
           'createdAt': repas.createdAt?.toIso8601String(),
         },
@@ -107,7 +107,9 @@ class RepasService {
         nutrimentsCaches: repasRow['nutrimentsCaches'] != null
             ? Map<String, double>.from(
                 Map<String, dynamic>.from(
-                  repasRow['nutrimentsCaches'] as Map,
+                  repasRow['nutrimentsCaches'] is String 
+                      ? {} // Si c'est une chaîne, on retourne une Map vide
+                      : repasRow['nutrimentsCaches'] as Map,
                 ),
               )
             : null,

@@ -171,7 +171,7 @@ class AlimentService {
     final db = await DatabaseService().database;
     final repasAliments = await db.query(
       'repas_aliments',
-      where: 'aliment_id = ?',
+      where: 'alimentId = ?',
       whereArgs: [alimentId],
     );
 
@@ -179,7 +179,7 @@ class AlimentService {
       return [];
     }
 
-    final repasIds = repasAliments.map((ra) => ra['repas_id'] as String).toSet();
+    final repasIds = repasAliments.map((ra) => ra['repasId'] as String).toSet();
     final repas = await db.query(
       'repas',
       where: 'id IN (${List.filled(repasIds.length, '?').join(',')})',

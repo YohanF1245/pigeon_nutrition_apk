@@ -1,14 +1,12 @@
 import 'package:sqflite/sqflite.dart';
 import '../models/repas.dart';
 import 'database_service.dart';
-import 'aliment_service.dart';
 import 'package:logging/logging.dart';
 
 class RepasService {
   static final RepasService _instance = RepasService._internal();
   final _logger = Logger('RepasService');
   final _databaseService = DatabaseService();
-  final _alimentService = AlimentService();
 
   factory RepasService() {
     return _instance;
@@ -78,13 +76,6 @@ class RepasService {
           },
           conflictAlgorithm: ConflictAlgorithm.replace,
         );
-
-        // Mise à jour du stock
-        await _alimentService.updateStock(
-          repasAliment.alimentId,
-          -repasAliment.quantite,
-          txn,
-        );
       }
     });
 
@@ -142,26 +133,54 @@ class RepasService {
     return repas;
   }
 
+  Future<List<Repas>> getRepasContainingAliment(String alimentId) async {
+    final db = await _databaseService.database;
+    
+    final List<Map<String, dynamic>> repasAlimentsRows = await db.query(
+      'repas_aliments',
+      where: 'alimentId = ?',
+      whereArgs: [alimentId],
+    );
+
+    final repasIds = repasAlimentsRows.map((row) => row['repasId'] as String).toSet();
+    
+    if (repasIds.isEmpty) return [];
+
+    final List<Map<String, dynamic>> repasRows = await db.query(
+      'repas',
+      where: 'id IN (${List.filled(repasIds.length, '?').join(',')})',
+      whereArgs: repasIds.toList(),
+    );
+
+    final List<Repas> repas = [];
+
+    for (var repasRow in repasRows) {
+      final List<Map<String, dynamic>> alimentsRows = await db.query(
+        'repas_aliments',
+        where: 'repasId = ?',
+        whereArgs: [repasRow['id']],
+      );
+
+      final aliments = alimentsRows.map((row) => RepasAliment(
+        alimentId: row['alimentId'],
+        quantite: row['quantite'],
+      )).toList();
+
+      repas.add(Repas(
+        id: repasRow['id'],
+        nom: repasRow['nom'],
+        dateHeure: DateTime.parse(repasRow['dateHeure']),
+        aliments: aliments,
+      ));
+    }
+
+    return repas;
+  }
+
   Future<void> supprimerRepas(String id) async {
     final db = await _databaseService.database;
     
     await db.transaction((txn) async {
-      // Récupère les aliments du repas pour mettre à jour le stock
-      final List<Map<String, dynamic>> alimentsRows = await txn.query(
-        'repas_aliments',
-        where: 'repasId = ?',
-        whereArgs: [id],
-      );
-
-      // Restitue les quantités au stock
-      for (var row in alimentsRows) {
-        await _alimentService.updateStock(
-          row['alimentId'],
-          row['quantite'],
-          txn,
-        );
-      }
-
       // Supprime le repas et ses associations (cascade)
       await txn.delete(
         'repas',

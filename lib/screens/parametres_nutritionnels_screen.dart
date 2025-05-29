@@ -31,6 +31,7 @@ class _ParametresNutritionnelsScreenState extends State<ParametresNutritionnelsS
   double _objectifProteines = 30;
   double _objectifLipides = 25;
   double _objectifGlucides = 45;
+  double _protsParKg = 1.6; // valeur par défaut pour maintien
 
   ParametresNutritionnels? _parametres;
   bool _isLoading = true;
@@ -42,7 +43,14 @@ class _ParametresNutritionnelsScreenState extends State<ParametresNutritionnelsS
     _poidsController = TextEditingController(text: _poids.toString());
     _tailleController = TextEditingController(text: _taille.toString());
     _ageController = TextEditingController(text: _age.toString());
+    _protsParKg = _getDefaultProtsParKg(_objectif);
     _chargerParametres();
+  }
+
+  double _getDefaultProtsParKg(String objectif) {
+    if (objectif == 'perte') return 2.0;
+    if (objectif == 'prise') return 1.6;
+    return 1.6; // maintien
   }
 
   @override
@@ -63,14 +71,27 @@ class _ParametresNutritionnelsScreenState extends State<ParametresNutritionnelsS
         _age = parametres.age;
         _sexe = parametres.sexe;
         _niveauActivite = parametres.niveauActivite;
+        _objectif = parametres.objectif;
         _objectifProteines = parametres.objectifProteines;
         _objectifLipides = parametres.objectifLipides;
         _objectifGlucides = parametres.objectifGlucides;
-        
-        // Mise à jour des controllers
         _poidsController.text = _poids.toString();
         _tailleController.text = _taille.toString();
         _ageController.text = _age.toString();
+        // Correction de la valeur du slider si hors bornes
+        double min = 1.2, max = 2.4;
+        if (_objectif == 'perte') { min = 2.0; max = 2.4; }
+        if (_objectif == 'prise') { min = 1.6; max = 2.0; }
+        double val = 0;
+        final poidsDouble = double.tryParse(_poids.toString()) ?? 1.0;
+        final protG = double.tryParse(parametres.objectifProteinesGrammes.toString()) ?? 0.0;
+        if (protG > 0) {
+          val = protG / poidsDouble;
+        } else {
+          val = _getDefaultProtsParKg(_objectif);
+        }
+        if (val < min || val > max) val = min;
+        _protsParKg = val;
       });
     }
     setState(() {
@@ -81,21 +102,7 @@ class _ParametresNutritionnelsScreenState extends State<ParametresNutritionnelsS
   Future<void> _sauvegarderParametres() async {
     if (_formKey.currentState!.validate()) {
       _formKey.currentState!.save();
-
-      // Vérifier que le total des macronutriments est égal à 100%
-      final total = _objectifProteines + _objectifLipides + _objectifGlucides;
-      if (total != 100) {
-        if (mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Le total des macronutriments doit être égal à 100%'),
-              backgroundColor: Colors.red,
-            ),
-          );
-        }
-        return;
-      }
-
+      
       final parametres = ParametresNutritionnels(
         id: _parametres?.id ?? _uuid.v4(),
         poids: _poids,
@@ -103,16 +110,25 @@ class _ParametresNutritionnelsScreenState extends State<ParametresNutritionnelsS
         age: _age,
         sexe: _sexe,
         niveauActivite: _niveauActivite,
+        objectif: _objectif,
         objectifProteines: _objectifProteines,
         objectifLipides: _objectifLipides,
         objectifGlucides: _objectifGlucides,
       );
-
+      
+      // Recalculer les besoins avec le mode approprié
+      parametres.calculerBesoins(calculAutomatique: _calculAutomatique);
+      
       await _storageService.saveParametresNutritionnels(parametres);
       setState(() {
         _parametres = parametres;
+        // Mettre à jour les valeurs affichées
+        _objectifProteines = parametres.objectifProteines;
+        _objectifLipides = parametres.objectifLipides;
+        _objectifGlucides = parametres.objectifGlucides;
+        _protsParKg = parametres.proteinesParKg;
       });
-
+      
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
@@ -127,25 +143,25 @@ class _ParametresNutritionnelsScreenState extends State<ParametresNutritionnelsS
 
   void _calculerMacrosAutomatiques() {
     if (!_calculAutomatique) return;
-
-    switch (_objectif) {
-      case 'perte':
-        _objectifProteines = 35;
-        _objectifLipides = 30;
-        _objectifGlucides = 35;
-        break;
-      case 'maintien':
-        _objectifProteines = 30;
-        _objectifLipides = 25;
-        _objectifGlucides = 45;
-        break;
-      case 'prise':
-        _objectifProteines = 30;
-        _objectifLipides = 20;
-        _objectifGlucides = 50;
-        break;
-    }
-    setState(() {});
+    
+    final parametres = ParametresNutritionnels(
+      id: _parametres?.id ?? _uuid.v4(),
+      poids: _poids,
+      taille: _taille,
+      age: _age,
+      sexe: _sexe,
+      niveauActivite: _niveauActivite,
+      objectif: _objectif,
+    );
+    
+    parametres.calculerBesoins(calculAutomatique: true);
+    
+    setState(() {
+      _objectifProteines = parametres.objectifProteines;
+      _objectifLipides = parametres.objectifLipides;
+      _objectifGlucides = parametres.objectifGlucides;
+      _protsParKg = parametres.proteinesParKg;
+    });
   }
 
   void _afficherGuideNutrition() {
@@ -216,6 +232,68 @@ class _ParametresNutritionnelsScreenState extends State<ParametresNutritionnelsS
         ),
         const SizedBox(height: 8),
         Text(content),
+      ],
+    );
+  }
+
+  double get _caloriesObjectif {
+    if (_parametres == null) return 0;
+    return _parametres!.caloriesQuotidiennes;
+  }
+
+  double get _protPourcent {
+    if (_parametres == null) return 0;
+    return _parametres!.objectifProteines;
+  }
+
+  double get _glucidesPourcent {
+    if (_parametres == null) return 0;
+    return _parametres!.objectifGlucides;
+  }
+
+  Widget _buildSliderLipides() {
+    final maxLipides = (100 - _protPourcent).clamp(0, 100).toDouble();
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Lipides : ${_objectifLipides.round()}%'),
+        const SizedBox(height: 4),
+        Text(
+          'Important pour les hormones et l\'absorption des vitamines',
+          style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+        ),
+        Slider(
+          value: _objectifLipides,
+          min: 0,
+          max: maxLipides,
+          divisions: maxLipides > 0 ? maxLipides.round() : 1,
+          onChanged: _calculAutomatique ? null : (value) {
+            setState(() {
+              _objectifLipides = value;
+            });
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSliderGlucides() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text('Glucides : ${_glucidesPourcent.round()}%'),
+        const SizedBox(height: 4),
+        Text(
+          'Principale source d\'énergie',
+          style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+        ),
+        Slider(
+          value: _glucidesPourcent,
+          min: 0,
+          max: 100,
+          divisions: 100,
+          onChanged: null,
+        ),
       ],
     );
   }
@@ -450,43 +528,9 @@ class _ParametresNutritionnelsScreenState extends State<ParametresNutritionnelsS
                             },
                           ),
                           const Divider(),
-                          _buildSlider(
-                            label: 'Protéines',
-                            value: _objectifProteines,
-                            onChanged: _calculAutomatique ? null : (value) {
-                              final maxProteines = 100 - _objectifLipides;
-                              if (value <= maxProteines) {
-                                setState(() {
-                                  _objectifProteines = value;
-                                  _objectifGlucides = maxProteines - value;
-                                });
-                              }
-                            },
-                            maxValue: 100 - _objectifLipides,
-                            description: 'Essentielles pour la croissance et la réparation musculaire',
-                          ),
-                          _buildSlider(
-                            label: 'Lipides',
-                            value: _objectifLipides,
-                            onChanged: _calculAutomatique ? null : (value) {
-                              final maxLipides = 100 - _objectifProteines;
-                              if (value <= maxLipides) {
-                                setState(() {
-                                  _objectifLipides = value;
-                                  _objectifGlucides = maxLipides - value;
-                                });
-                              }
-                            },
-                            maxValue: 100 - _objectifProteines,
-                            description: 'Importants pour les hormones et l\'absorption des vitamines',
-                          ),
-                          _buildSlider(
-                            label: 'Glucides',
-                            value: _objectifGlucides,
-                            enabled: false,
-                            maxValue: 100,
-                            description: 'Principale source d\'énergie',
-                          ),
+                          _buildSliderProteines(),
+                          _buildSliderLipides(),
+                          _buildSliderGlucides(),
                         ],
                       ),
                     ),
@@ -558,32 +602,36 @@ class _ParametresNutritionnelsScreenState extends State<ParametresNutritionnelsS
     );
   }
 
-  Widget _buildSlider({
-    required String label,
-    required double value,
-    void Function(double)? onChanged,
-    bool enabled = true,
-    required String description,
-    required double maxValue,
-  }) {
+  Widget _buildSliderProteines() {
+    // Fourchette selon l'objectif
+    double min = 1.2;
+    double max = 2.4;
+    if (_objectif == 'perte') {
+      min = 2.0;
+      max = 2.4;
+    } else if (_objectif == 'prise') {
+      min = 1.6;
+      max = 2.0;
+    }
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text('$label: ${value.round()}%'),
+        Text('Protéines : ${_protsParKg.toStringAsFixed(2)} g/kg'),
         const SizedBox(height: 4),
         Text(
-          description,
-          style: TextStyle(
-            fontSize: 12,
-            color: Colors.grey[600],
-          ),
+          'Soit ${( _protsParKg * _poids ).round()}g par jour',
+          style: TextStyle(fontSize: 12, color: Colors.grey[600]),
         ),
         Slider(
-          value: value,
-          min: 0,
-          max: maxValue,
-          divisions: 100,
-          onChanged: onChanged,
+          value: _protsParKg,
+          min: min,
+          max: max,
+          divisions: ((max - min) * 100).round(),
+          onChanged: _calculAutomatique ? null : (value) {
+            setState(() {
+              _protsParKg = value;
+            });
+          },
         ),
       ],
     );

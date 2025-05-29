@@ -20,6 +20,13 @@ et ce projet adhère au [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   - Détails nutritionnels complets par repas
 
 ### Ajouté
+- Graphique des écarts nutritionnels dans le tableau de bord :
+  - Visualisation des écarts entre consommation et objectifs
+  - Affichage des 7 derniers jours minimum
+  - Défilement horizontal pour voir l'historique
+  - Code couleur cohérent avec l'application
+  - Légende des nutriments
+  - Hauteur optimisée (30% de l'écran)
 - Optimisation majeure des performances de la base de données :
   - Réduction des temps de verrouillage lors des opérations sur l'agenda
   - Utilisation de transactions optimisées pour les mises à jour multiples

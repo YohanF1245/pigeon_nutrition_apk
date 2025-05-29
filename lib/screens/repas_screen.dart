@@ -271,8 +271,21 @@ class _RepasScreenState extends State<RepasScreen> {
                                       heure: hour,
                                       minute: 0,
                                     );
-                                    await _storageService.saveJourRepas(jourRepas);
-                                    if (mounted) setState(() {});
+
+                                    try {
+                                      await _storageService.saveJourRepas(jourRepas);
+                                      if (mounted) setState(() {});
+                                    } catch (e) {
+                                      if (mounted) {
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          SnackBar(
+                                            content: Text(e.toString()),
+                                            backgroundColor: Colors.red,
+                                            duration: const Duration(seconds: 5),
+                                          ),
+                                        );
+                                      }
+                                    }
                                   },
                                   builder: (context, candidateData, rejectedData) {
                                     return Container(

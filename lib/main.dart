@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:logging/logging.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:intl/date_symbol_data_local.dart';
 import 'services/background_service.dart';
 import 'screens/dashboard_screen.dart';
 import 'screens/aliments_screen.dart';
@@ -16,6 +17,9 @@ import 'services/repas_service.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  
+  // Initialisation des données de localisation
+  await initializeDateFormatting('fr_FR', null);
   
   // Initialisation des services
   final databaseService = DatabaseService();

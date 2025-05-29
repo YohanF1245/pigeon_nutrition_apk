@@ -15,6 +15,23 @@ et ce projet adhère au [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   - Gestion des repas avec impact sur le stock
   - Détails nutritionnels complets par repas
 
+### Corrections
+- Correction de la quantité d'achat par défaut dans la liste de courses :
+  - 1 unité pour les aliments gérés par portion (boîte, unité...)
+  - 1000 pour les aliments gérés par masse (grammes, ml...)
+
+## [Non Publié]
+
+### Ajouté
+- Suppression sécurisée des aliments avec confirmation
+- Avertissement lors de la suppression d'un aliment utilisé dans des repas
+- Suppression automatique des repas liés à un aliment supprimé
+
+### Corrections
+- Correction de la quantité d'achat par défaut dans la liste de courses :
+  - 1 unité pour les aliments gérés par portion (boîte, unité...)
+  - 1000 pour les aliments gérés par masse (grammes, ml...)
+
 ## [0.1.2] - 2024-03-22
 
 ### Ajouté

@@ -95,6 +95,9 @@ et ce projet adhère au [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   - 1 unité pour les aliments gérés par portion (boîte, unité...)
   - 1000 pour les aliments gérés par masse (grammes, ml...)
 - Correction de l'overflow des valeurs nutritionnelles dans la vue détaillée des aliments d'un repas
+- Correction du rafraîchissement dynamique du dashboard après modification des paramètres nutritionnels :
+  - Suppression du `final` sur la liste `_screens` pour permettre la réaffectation
+  - Forçage de la reconstruction du dashboard après sauvegarde des paramètres
 
 ## [0.1.2] - 2024-03-22
 

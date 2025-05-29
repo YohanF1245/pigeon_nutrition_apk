@@ -87,7 +87,27 @@ class AlimentCard extends StatelessWidget {
                   children: [
                     if (aliment.gestionStock)
                       IconButton(
-                        icon: const Icon(Icons.edit_attributes),
+                        icon: Stack(
+                          children: [
+                            const Icon(Icons.inventory),
+                            Positioned(
+                              right: -2,
+                              bottom: -2,
+                              child: Container(
+                                padding: const EdgeInsets.all(2),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: const Icon(
+                                  Icons.sync,
+                                  size: 12,
+                                  color: Colors.blue,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
                         onPressed: () async {
                           try {
                             final result = await showDialog<double>(

@@ -101,6 +101,10 @@ class NutritionDeltaChart extends StatelessWidget {
       nutritionData.length * 60.0 + 40.0, // 60 pixels par point + 40 pixels de marge
     );
 
+    // S'assurer que l'intervalle est aligné avec les valeurs min/max
+    final adjustedMinY = (minY / interval).floor() * interval;
+    final adjustedMaxY = (maxY / interval).ceil() * interval;
+
     return SizedBox(
       height: MediaQuery.of(context).size.height * 0.3,
       child: SingleChildScrollView(
@@ -108,7 +112,7 @@ class NutritionDeltaChart extends StatelessWidget {
         child: SizedBox(
           width: minWidth,
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(8.0, 8.0, 40.0, 8.0), // Ajout d'une marge à droite
+            padding: const EdgeInsets.fromLTRB(0, 8.0, 40.0, 8.0),
             child: LineChart(
               LineChartData(
                 gridData: FlGridData(
@@ -131,8 +135,63 @@ class NutritionDeltaChart extends StatelessWidget {
                 ),
                 titlesData: FlTitlesData(
                   show: true,
-                  rightTitles: const AxisTitles(
-                    sideTitles: SideTitles(showTitles: false),
+                  leftTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      interval: interval,
+                      reservedSize: 60,
+                      getTitlesWidget: (value, meta) {
+                        if (value % interval != 0) {
+                          return const SizedBox.shrink();
+                        }
+                        String text;
+                        if (value.abs() >= 1000) {
+                          text = '${(value / 1000).toStringAsFixed(1)}k';
+                        } else {
+                          text = value.toStringAsFixed(0);
+                        }
+                        return Padding(
+                          padding: const EdgeInsets.only(right: 8.0),
+                          child: Text(
+                            text,
+                            style: const TextStyle(
+                              color: Colors.grey,
+                              fontSize: 10,
+                            ),
+                            textAlign: TextAlign.right,
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                  rightTitles: AxisTitles(
+                    sideTitles: SideTitles(
+                      showTitles: true,
+                      interval: interval,
+                      reservedSize: 60,
+                      getTitlesWidget: (value, meta) {
+                        if (value % interval != 0) {
+                          return const SizedBox.shrink();
+                        }
+                        String text;
+                        if (value.abs() >= 1000) {
+                          text = '${(value / 1000).toStringAsFixed(1)}k';
+                        } else {
+                          text = value.toStringAsFixed(0);
+                        }
+                        return Padding(
+                          padding: const EdgeInsets.only(left: 8.0),
+                          child: Text(
+                            text,
+                            style: const TextStyle(
+                              color: Colors.grey,
+                              fontSize: 10,
+                            ),
+                            textAlign: TextAlign.left,
+                          ),
+                        );
+                      },
+                    ),
                   ),
                   topTitles: const AxisTitles(
                     sideTitles: SideTitles(showTitles: false),
@@ -157,29 +216,6 @@ class NutritionDeltaChart extends StatelessWidget {
                         return const Text('');
                       },
                       interval: 1,
-                    ),
-                  ),
-                  leftTitles: AxisTitles(
-                    sideTitles: SideTitles(
-                      showTitles: true,
-                      interval: interval,
-                      reservedSize: 40,
-                      getTitlesWidget: (value, meta) {
-                        // Formater le nombre pour qu'il soit plus lisible
-                        String text;
-                        if (value.abs() >= 1000) {
-                          text = '${(value / 1000).toStringAsFixed(1)}k';
-                        } else {
-                          text = value.toStringAsFixed(0);
-                        }
-                        return Text(
-                          text,
-                          style: const TextStyle(
-                            color: Colors.grey,
-                            fontSize: 10,
-                          ),
-                        );
-                      },
                     ),
                   ),
                 ),
@@ -225,8 +261,8 @@ class NutritionDeltaChart extends StatelessWidget {
                     dotData: const FlDotData(show: true),
                   ),
                 ],
-                minY: minY,
-                maxY: maxY,
+                minY: adjustedMinY,
+                maxY: adjustedMaxY,
                 clipData: FlClipData.all(),
               ),
             ),

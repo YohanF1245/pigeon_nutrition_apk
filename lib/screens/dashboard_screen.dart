@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import '../services/aliment_service.dart';
 import '../services/storage_service.dart';
+import '../services/nutrition_history_service.dart';
+import '../services/database_service.dart';
 import '../models/parametres_nutritionnels.dart';
 import '../models/repas.dart';
 import '../models/aliment.dart';
+import '../widgets/nutrition_delta_chart.dart';
 import 'parametres_nutritionnels_screen.dart';
 import 'dart:async';
 import '../widgets/liste_courses.dart';
@@ -11,10 +14,12 @@ import '../main.dart';
 
 class DashboardScreen extends StatefulWidget {
   final Function(List<dynamic>)? onAlimentsEnRuptureChanged;
+  final DatabaseService databaseService;
   
   const DashboardScreen({
     super.key,
     this.onAlimentsEnRuptureChanged,
+    required this.databaseService,
   });
 
   @override
@@ -24,18 +29,28 @@ class DashboardScreen extends StatefulWidget {
 class _DashboardScreenState extends State<DashboardScreen> {
   final AlimentService _alimentService = AlimentService();
   final StorageService _storageService = StorageService();
+  late final NutritionHistoryService _nutritionHistoryService;
   final _refreshController = StreamController<void>.broadcast();
   
   List<Aliment>? _aliments;
   List<dynamic>? _alimentsEnRupture;
   ParametresNutritionnels? _parametres;
   Map<String, double>? _macrosJour;
+  List<Map<String, dynamic>>? _nutritionHistory;
   bool _isLoading = true;
   String? _error;
+  int _selectedPeriod = 7; // Période par défaut : 7 jours
+
+  final List<Map<String, dynamic>> _periodOptions = [
+    {'label': '7 jours', 'value': 7},
+    {'label': '14 jours', 'value': 14},
+    {'label': '30 jours', 'value': 30},
+  ];
 
   @override
   void initState() {
     super.initState();
+    _nutritionHistoryService = NutritionHistoryService(widget.databaseService);
     _loadData();
   }
 
@@ -58,6 +73,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
       final alimentsEnRupture = await _alimentService.getAlimentsEnRupture();
       final parametres = await _storageService.getParametresNutritionnels();
       final macrosJour = await _calculerMacrosJour();
+      final nutritionHistory = await _nutritionHistoryService.getNutritionHistory(days: _selectedPeriod);
 
       if (!mounted) return;
 
@@ -66,10 +82,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
         _alimentsEnRupture = alimentsEnRupture;
         _parametres = parametres;
         _macrosJour = macrosJour;
+        _nutritionHistory = nutritionHistory;
         _isLoading = false;
       });
 
-      // Notifier le parent du changement des aliments en rupture
       widget.onAlimentsEnRuptureChanged?.call(alimentsEnRupture);
     } catch (e) {
       if (!mounted) return;
@@ -173,7 +189,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Text('Erreur: $_error'),
+            Text(
+              'Une erreur est survenue : $_error',
+              style: const TextStyle(color: Colors.red),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 16),
             ElevatedButton(
               onPressed: _loadData,
               child: const Text('Réessayer'),
@@ -206,103 +227,24 @@ class _DashboardScreenState extends State<DashboardScreen> {
       },
     } : null;
 
-    return Scaffold(
-      body: RefreshIndicator(
-        onRefresh: _loadData,
-        child: SingleChildScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              if (macros != null) ...[
-                const Text(
-                  'Macronutriments du Jour',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Column(
-                      children: macros.entries.map((entry) {
-                        final nom = entry.key;
-                        final actuel = entry.value['actuel'] as double;
-                        final objectif = entry.value['objectif'] as double;
-                        final unite = entry.value['unite'] as String;
-                        final progress = (actuel / objectif).clamp(0.0, 1.0);
+    final objectives = _parametres != null ? {
+      'calories': _parametres!.caloriesQuotidiennes,
+      'proteines': _parametres!.objectifProteinesGrammes,
+      'lipides': _parametres!.objectifLipidesGrammes,
+      'glucides': _parametres!.objectifGlucidesGrammes,
+    } : null;
 
-                        return Column(
-                          children: [
-                            Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                              children: [
-                                Text(nom),
-                                Text('${actuel.toStringAsFixed(1)}/${objectif.toStringAsFixed(1)} $unite'),
-                              ],
-                            ),
-                            const SizedBox(height: 4),
-                            LinearProgressIndicator(
-                              value: progress,
-                              backgroundColor: Colors.grey[200],
-                              color: _getProgressColor(progress),
-                            ),
-                            const SizedBox(height: 12),
-                          ],
-                        );
-                      }).toList(),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 24),
-              ] else ...[
-                Card(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Column(
-                      children: [
-                        const Icon(
-                          Icons.settings,
-                          size: 48,
-                          color: Colors.grey,
-                        ),
-                        const SizedBox(height: 16),
-                        const Text(
-                          'Paramètres non configurés',
-                          style: TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        const Text(
-                          'Pour voir vos objectifs nutritionnels, veuillez configurer vos paramètres personnels.',
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 16),
-                        ElevatedButton(
-                          onPressed: () async {
-                            final result = await Navigator.push<bool>(
-                              context,
-                              MaterialPageRoute(builder: (context) => const ParametresNutritionnelsScreen()),
-                            );
-                            if (result == true) {
-                              _loadData();
-                            }
-                          },
-                          child: const Text('Configurer les paramètres'),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 24),
-              ],
+    return RefreshIndicator(
+      onRefresh: _loadData,
+      child: SingleChildScrollView(
+        physics: const AlwaysScrollableScrollPhysics(),
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (macros != null) ...[
               const Text(
-                'Résumé',
+                'Macronutriments du Jour',
                 style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
@@ -312,44 +254,130 @@ class _DashboardScreenState extends State<DashboardScreen> {
               Card(
                 child: Padding(
                   padding: const EdgeInsets.all(16.0),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceAround,
-                    children: [
-                      Column(
+                  child: Column(
+                    children: macros.entries.map((entry) {
+                      final nom = entry.key;
+                      final actuel = entry.value['actuel'] as double;
+                      final objectif = entry.value['objectif'] as double;
+                      final unite = entry.value['unite'] as String;
+                      final progress = (actuel / objectif).clamp(0.0, 1.0);
+
+                      return Column(
                         children: [
-                          const Icon(Icons.food_bank, size: 32),
-                          const SizedBox(height: 8),
-                          Text(
-                            '${_aliments?.length ?? 0}',
-                            style: const TextStyle(
-                              fontSize: 24,
-                              fontWeight: FontWeight.bold,
-                            ),
+                          Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                            children: [
+                              Text(nom),
+                              Text('${actuel.toStringAsFixed(1)}/${objectif.toStringAsFixed(1)} $unite'),
+                            ],
                           ),
-                          const Text('Aliments'),
-                        ],
-                      ),
-                      Column(
-                        children: [
-                          const Icon(Icons.warning, size: 32, color: Colors.orange),
-                          const SizedBox(height: 8),
-                          Text(
-                            '${_alimentsEnRupture?.length ?? 0}',
-                            style: const TextStyle(
-                              fontSize: 24,
-                              fontWeight: FontWeight.bold,
-                              color: Colors.orange,
-                            ),
+                          const SizedBox(height: 4),
+                          LinearProgressIndicator(
+                            value: progress,
+                            backgroundColor: Colors.grey[200],
+                            color: _getProgressColor(progress),
                           ),
-                          const Text('Alertes'),
+                          const SizedBox(height: 12),
                         ],
-                      ),
-                    ],
+                      );
+                    }).toList(),
                   ),
                 ),
               ),
+              const SizedBox(height: 24),
             ],
-          ),
+            if (_nutritionHistory != null && objectives != null) ...[
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'Évolution des écarts nutritionnels',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  DropdownButton<int>(
+                    value: _selectedPeriod,
+                    items: _periodOptions.map((option) {
+                      return DropdownMenuItem<int>(
+                        value: option['value'] as int,
+                        child: Text(option['label'] as String),
+                      );
+                    }).toList(),
+                    onChanged: (value) {
+                      if (value != null) {
+                        setState(() {
+                          _selectedPeriod = value;
+                        });
+                        _loadData();
+                      }
+                    },
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Card(
+                child: Column(
+                  children: [
+                    NutritionDeltaChart(
+                      nutritionData: _nutritionHistory!,
+                      objectives: objectives,
+                    ),
+                    const NutritionChartLegend(),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 24),
+            ],
+            const Text(
+              'Résumé',
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 8),
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: [
+                    Column(
+                      children: [
+                        const Icon(Icons.food_bank, size: 32),
+                        const SizedBox(height: 8),
+                        Text(
+                          '${_aliments?.length ?? 0}',
+                          style: const TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const Text('Aliments'),
+                      ],
+                    ),
+                    Column(
+                      children: [
+                        const Icon(Icons.warning, size: 32, color: Colors.orange),
+                        const SizedBox(height: 8),
+                        Text(
+                          '${_alimentsEnRupture?.length ?? 0}',
+                          style: const TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.orange,
+                          ),
+                        ),
+                        const Text('Alertes'),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
         ),
       ),
     );

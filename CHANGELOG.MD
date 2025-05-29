@@ -56,6 +56,16 @@ et ce projet adhère au [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   - Refactoring pour garantir la synchronisation des labels Y avec la grille, quel que soit le scroll.
 
 ### Améliorations
+- Refonte complète du système de calcul des macronutriments :
+  - Centralisation des calculs dans le modèle `ParametresNutritionnels`
+  - Amélioration de la cohérence entre les valeurs affichées et stockées
+  - Optimisation des calculs automatiques selon l'objectif :
+    - Perte de poids : 2.2g/kg de protéines, 30% lipides
+    - Maintien : 1.8g/kg de protéines, 25% lipides
+    - Prise de masse : 1.7g/kg de protéines, 20% lipides
+  - Calcul automatique des glucides en fonction des calories restantes
+  - Meilleure gestion du mode manuel vs automatique
+  - Synchronisation des pourcentages et grammes
 - Optimisation de la plage horaire de l'agenda (6h-23h)
 - Correction des noms de colonnes dans la base de données
 - Amélioration de la gestion des suppressions :

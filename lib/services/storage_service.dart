@@ -55,6 +55,15 @@ class StorageService {
   }
 
   Future<void> deleteAliment(String id) async {
+    // Récupérer les repas contenant cet aliment
+    final repasAffectes = await _repasService.getRepasContainingAliment(id);
+    
+    // Supprimer les repas affectés
+    for (var repas in repasAffectes) {
+      await _repasService.supprimerRepas(repas.id);
+    }
+    
+    // Supprimer l'aliment
     final aliments = await getAliments();
     aliments.removeWhere((a) => a.id == id);
     await saveAliments(aliments);
@@ -169,5 +178,9 @@ class StorageService {
   Future<void> saveParametresNutritionnels(ParametresNutritionnels parametres) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString('parametres_nutritionnels', jsonEncode(parametres.toMap()));
+  }
+
+  Future<List<Repas>> getRepasContainingAliment(String alimentId) async {
+    return await _repasService.getRepasContainingAliment(alimentId);
   }
 } 

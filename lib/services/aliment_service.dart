@@ -3,6 +3,7 @@ import '../models/aliment.dart';
 import 'database_service.dart';
 import 'package:logging/logging.dart';
 import '../models/repas.dart';
+import 'dart:convert';
 
 class AlimentService {
   final _databaseService = DatabaseService();
@@ -186,6 +187,38 @@ class AlimentService {
       whereArgs: repasIds.toList(),
     );
 
-    return repas.map((r) => Repas.fromMap(r)).toList();
+    final List<Repas> resultat = [];
+    
+    for (var repasRow in repas) {
+      // Récupérer tous les aliments pour ce repas
+      final alimentsRows = await db.query(
+        'repas_aliments',
+        where: 'repasId = ?',
+        whereArgs: [repasRow['id'] as String],
+      );
+
+      final aliments = alimentsRows.map((row) => RepasAliment(
+        alimentId: row['alimentId'] as String,
+        quantite: (row['quantite'] as num).toDouble(),
+      )).toList();
+
+      resultat.add(Repas(
+        id: repasRow['id'] as String,
+        nom: repasRow['nom'] as String,
+        aliments: aliments,
+        nutrimentsCaches: repasRow['nutrimentsCaches'] != null
+            ? Map<String, double>.from(
+                Map<String, dynamic>.from(
+                  jsonDecode(repasRow['nutrimentsCaches'] as String),
+                ),
+              )
+            : null,
+        createdAt: repasRow['createdAt'] != null
+            ? DateTime.parse(repasRow['createdAt'] as String)
+            : null,
+      ));
+    }
+
+    return resultat;
   }
 } 

@@ -507,7 +507,40 @@ class _RepasScreenState extends State<RepasScreen> {
                               return Card(
                                 margin: const EdgeInsets.fromLTRB(4.0, 0.0, 4.0, 8.0),
                                 child: GestureDetector(
-                                  onTap: () => _afficherDetailsRepas(context, repasItem, alimentsSnapshot.data!),
+                                  onTap: () async {
+                                    showModalBottomSheet(
+                                      context: context,
+                                      builder: (context) => Column(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          ListTile(
+                                            leading: const Icon(Icons.visibility),
+                                            title: const Text('Voir les détails'),
+                                            onTap: () {
+                                              Navigator.pop(context);
+                                              _afficherDetailsRepas(context, repasItem, alimentsSnapshot.data!);
+                                            },
+                                          ),
+                                          ListTile(
+                                            leading: const Icon(Icons.edit),
+                                            title: const Text('Modifier'),
+                                            onTap: () {
+                                              Navigator.pop(context);
+                                              _modifierRepas(context, repasItem);
+                                            },
+                                          ),
+                                          ListTile(
+                                            leading: const Icon(Icons.delete, color: Colors.red),
+                                            title: const Text('Supprimer', style: TextStyle(color: Colors.red)),
+                                            onTap: () {
+                                              Navigator.pop(context);
+                                              _confirmerSuppressionRepas(context, repasItem, alimentsSnapshot.data!);
+                                            },
+                                          ),
+                                        ],
+                                      ),
+                                    );
+                                  },
                                   child: Container(
                                     width: 140,
                                     padding: const EdgeInsets.all(8.0),
@@ -930,5 +963,85 @@ class _RepasScreenState extends State<RepasScreen> {
       jr.heure == heure && 
       (jr.minute >= 0 && jr.minute < 60)
     );
+  }
+
+  Future<void> _confirmerSuppressionRepas(BuildContext context, Repas repas, List<Aliment> aliments) async {
+    final joursRepas = await _storageService.getJoursRepas();
+    final joursRepasAffectes = joursRepas.where((jr) => jr.repasId == repas.id).toList();
+    
+    final nutriments = await repas.calculerNutriments(aliments);
+    
+    if (!context.mounted) return;
+    
+    final confirme = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Supprimer le repas'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Voulez-vous vraiment supprimer "${repas.nom}" ?'),
+            if (joursRepasAffectes.isNotEmpty) ...[
+              const SizedBox(height: 16),
+              Text(
+                'Attention : Ce repas est utilisé ${joursRepasAffectes.length} fois dans l\'agenda.',
+                style: const TextStyle(
+                  color: Colors.red,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'La suppression de ce repas l\'effacera également de l\'agenda.',
+                style: TextStyle(fontStyle: FontStyle.italic),
+              ),
+            ],
+            const SizedBox(height: 16),
+            _buildNutrimentsCard(repas, aliments),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Annuler'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: TextButton.styleFrom(
+              foregroundColor: Colors.red,
+            ),
+            child: const Text('Supprimer'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirme == true) {
+      await _storageService.deleteRepas(repas.id);
+      if (mounted) {
+        setState(() {});
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Repas supprimé avec succès'),
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _modifierRepas(BuildContext context, Repas repas) async {
+    final result = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (context) => AjouterRepasScreen(
+          repasAModifier: repas,
+        ),
+      ),
+    );
+
+    if (result == true && mounted) {
+      setState(() {});
+    }
   }
 } 

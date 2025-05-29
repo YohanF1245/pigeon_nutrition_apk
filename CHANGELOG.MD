@@ -27,6 +27,11 @@ et ce projet adhère au [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - Confirmation détaillée lors de la suppression d'un repas de l'agenda avec affichage de l'impact nutritionnel
 - Avertissement lors de la suppression d'un aliment utilisé dans des repas
 - Suppression automatique des repas liés à un aliment supprimé
+- Gestion complète des repas :
+  - Édition des repas existants avec mise à jour des valeurs nutritionnelles
+  - Suppression sécurisée des repas avec confirmation détaillée
+  - Avertissement lors de la suppression d'un repas utilisé dans l'agenda
+  - Mise à jour automatique de l'agenda lors de la suppression d'un repas
 
 ### Améliorations
 - Optimisation de l'agenda :

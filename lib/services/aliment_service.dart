@@ -1,13 +1,10 @@
 import 'package:sqflite/sqflite.dart';
 import '../models/aliment.dart';
-import '../models/repas.dart';
 import 'database_service.dart';
-import 'repas_service.dart';
 import 'package:logging/logging.dart';
 
 class AlimentService {
   final _databaseService = DatabaseService();
-  final _repasService = RepasService();
   static final _logger = Logger('AlimentService');
 
   Future<void> insertAliment(Aliment aliment) async {
@@ -26,28 +23,10 @@ class AlimentService {
     await _databaseService.updateAliment(aliment);
   }
 
-  Future<List<Repas>> getRepasContainingAliment(String alimentId) async {
-    final repas = await _repasService.getRepas();
-    return repas.where((r) => 
-      r.aliments.any((a) => a.alimentId == alimentId)
-    ).toList();
-  }
-
   Future<void> deleteAliment(String alimentId) async {
     try {
       final db = await _databaseService.database;
       
-      // Trouver tous les repas contenant cet aliment
-      final repasAffectes = await getRepasContainingAliment(alimentId);
-      
-      if (repasAffectes.isNotEmpty) {
-        // Supprimer tous les repas affectés
-        for (var repas in repasAffectes) {
-          await _repasService.supprimerRepas(repas.id);
-          _logger.info('Repas supprimé: ${repas.id}');
-        }
-      }
-
       // Supprimer l'aliment
       await db.delete(
         'aliments',

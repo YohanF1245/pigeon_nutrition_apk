@@ -488,9 +488,11 @@ class _RepasScreenState extends State<RepasScreen> {
                           }
 
                           return FutureBuilder<Map<String, double>>(
-                            future: repasItem.calculerNutriments(alimentsSnapshot.data!),
-                            builder: (context, nutrimentSnapshot) {
-                              if (!nutrimentSnapshot.hasData) {
+                            future: Future.wait([
+                              repasItem.calculerNutriments(alimentsSnapshot.data!),
+                            ]).then((results) => results[0]),
+                            builder: (context, snapshot) {
+                              if (!snapshot.hasData) {
                                 return const Card(
                                   margin: EdgeInsets.symmetric(horizontal: 4.0),
                                   child: SizedBox(
@@ -502,7 +504,7 @@ class _RepasScreenState extends State<RepasScreen> {
                                   ),
                                 );
                               }
-                              final nutriments = nutrimentSnapshot.data!;
+                              final nutriments = snapshot.data!;
                               return Card(
                                 margin: const EdgeInsets.fromLTRB(4.0, 0.0, 4.0, 8.0),
                                 child: GestureDetector(
@@ -799,7 +801,9 @@ class _RepasScreenState extends State<RepasScreen> {
               ),
               const Divider(),
               FutureBuilder<Map<String, double>>(
-                future: repas.calculerNutriments(aliments),
+                future: Future.wait([
+                  repas.calculerNutriments(await _alimentService.getAllAliments()),
+                ]).then((results) => results[0]),
                 builder: (context, snapshot) {
                   if (!snapshot.hasData) {
                     return const Center(
@@ -878,13 +882,96 @@ class _RepasScreenState extends State<RepasScreen> {
     final repas = await _getRepas(jourRepas.repasId);
     if (repas == null) return;
 
+    final aliments = await _alimentService.getAllAliments();
     if (!context.mounted) return;
     
     final confirme = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Supprimer le repas'),
-        content: Text('Voulez-vous vraiment supprimer "${repas.nom}" de cette plage horaire ?'),
+        title: const Text('Retirer le repas'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Voulez-vous vraiment retirer "${repas.nom}" de cette plage horaire ?'),
+            const SizedBox(height: 8),
+            FutureBuilder<Map<String, double>>(
+              future: repas.calculerNutriments(aliments),
+              builder: (context, snapshot) {
+                if (!snapshot.hasData) {
+                  return const Center(
+                    child: Padding(
+                      padding: EdgeInsets.all(8.0),
+                      child: CircularProgressIndicator(),
+                    ),
+                  );
+                }
+
+                final nutriments = snapshot.data!;
+                return Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(8.0),
+                    child: Column(
+                      children: [
+                        const Text(
+                          'Impact nutritionnel :',
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        const SizedBox(height: 4),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceAround,
+                          children: [
+                            Column(
+                              children: [
+                                const Text('Calories', style: TextStyle(color: Colors.blue)),
+                                Text(
+                                  '${nutriments['calories']?.toStringAsFixed(0)} kcal',
+                                  style: const TextStyle(fontWeight: FontWeight.bold),
+                                ),
+                              ],
+                            ),
+                            Column(
+                              children: [
+                                const Text('Protéines', style: TextStyle(color: Colors.red)),
+                                Text(
+                                  '${nutriments['proteines']?.toStringAsFixed(1)}g',
+                                  style: const TextStyle(fontWeight: FontWeight.bold),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceAround,
+                          children: [
+                            Column(
+                              children: [
+                                const Text('Lipides', style: TextStyle(color: Colors.orange)),
+                                Text(
+                                  '${nutriments['lipides']?.toStringAsFixed(1)}g',
+                                  style: const TextStyle(fontWeight: FontWeight.bold),
+                                ),
+                              ],
+                            ),
+                            Column(
+                              children: [
+                                const Text('Glucides', style: TextStyle(color: Colors.green)),
+                                Text(
+                                  '${nutriments['glucides']?.toStringAsFixed(1)}g',
+                                  style: const TextStyle(fontWeight: FontWeight.bold),
+                                ),
+                              ],
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+          ],
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
@@ -895,7 +982,7 @@ class _RepasScreenState extends State<RepasScreen> {
             style: TextButton.styleFrom(
               foregroundColor: Colors.red,
             ),
-            child: const Text('Supprimer'),
+            child: const Text('Retirer'),
           ),
         ],
       ),

@@ -153,7 +153,9 @@ class DatabaseService {
           {
             'id': repas['id'],
             'nom': repas['nom'],
-            'nutrimentsCaches': repas['nutrimentsCaches'],
+            'nutrimentsCaches': repas['nutrimentsCaches'] != null 
+                ? Map<String, double>.from(repas['nutrimentsCaches'] as Map).toString()
+                : null,
             'createdAt': dateHeure.toIso8601String(),
           },
         );

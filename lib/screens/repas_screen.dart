@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/repas.dart';
 import '../models/aliment.dart';
+import '../models/jour_repas.dart';
 import '../services/storage_service.dart';
 import '../services/aliment_service.dart';
 import 'package:intl/intl.dart';
@@ -198,45 +199,164 @@ class _RepasScreenState extends State<RepasScreen> {
           ),
           // Grille horaire
           Expanded(
-            child: ListView.builder(
-              itemCount: 24,
-              itemBuilder: (context, hour) {
-                return Container(
-                  height: 60,
-                  decoration: BoxDecoration(
-                    border: Border(
-                      bottom: BorderSide(
-                        color: Colors.grey[300]!,
-                        width: 1,
-                      ),
-                    ),
-                  ),
-                  child: Row(
-                    children: [
-                      SizedBox(
-                        width: 50,
-                        child: Text(
-                          '$hour:00',
-                          textAlign: TextAlign.center,
+            child: FutureBuilder<Map<int, List<JourRepas>>>(
+              future: _getJoursRepasParHeure(_selectedDate),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+
+                final repasParHeure = snapshot.data ?? {};
+                
+                return ListView.builder(
+                  itemCount: 24,
+                  itemBuilder: (context, hour) {
+                    final joursRepas = repasParHeure[hour] ?? [];
+
+                    return Container(
+                      height: 60,
+                      decoration: BoxDecoration(
+                        border: Border(
+                          bottom: BorderSide(
+                            color: Colors.grey[300]!,
+                            width: 1,
+                          ),
                         ),
                       ),
-                      const VerticalDivider(),
-                      Expanded(
-                        child: DragTarget<Repas>(
-                          onAccept: (repas) {
-                            // TODO: Implémenter la logique de placement du repas
-                          },
-                          builder: (context, candidateData, rejectedData) {
-                            return Container(
-                              color: candidateData.isNotEmpty
-                                  ? Colors.grey[200]
-                                  : Colors.transparent,
-                            );
-                          },
-                        ),
+                      child: Row(
+                        children: [
+                          // Colonne des heures
+                          SizedBox(
+                            width: 50,
+                            child: Text(
+                              '$hour:00',
+                              textAlign: TextAlign.center,
+                            ),
+                          ),
+                          const VerticalDivider(),
+                          // Zone des repas
+                          Expanded(
+                            child: Stack(
+                              children: [
+                                // Zone de drop
+                                DragTarget<Repas>(
+                                  onWillAccept: (repas) {
+                                    if (repas == null) return false;
+                                    return true;
+                                  },
+                                  onAcceptWithDetails: (details) async {
+                                    final repas = details.data;
+                                    final disponible = await _verifierDisponibiliteHoraire(hour);
+                                    
+                                    if (!disponible) {
+                                      if (mounted) {
+                                        ScaffoldMessenger.of(context).showSnackBar(
+                                          const SnackBar(
+                                            content: Text('Il y a déjà un repas prévu à cette heure'),
+                                            backgroundColor: Colors.orange,
+                                          ),
+                                        );
+                                      }
+                                      return;
+                                    }
+                                    
+                                    final jourRepas = JourRepas(
+                                      date: DateTime(
+                                        _selectedDate.year,
+                                        _selectedDate.month,
+                                        _selectedDate.day,
+                                      ),
+                                      repasId: repas.id,
+                                      heure: hour,
+                                      minute: 0,
+                                    );
+                                    await _storageService.saveJourRepas(jourRepas);
+                                    if (mounted) setState(() {});
+                                  },
+                                  builder: (context, candidateData, rejectedData) {
+                                    return Container(
+                                      color: candidateData.isNotEmpty
+                                          ? Colors.blue[100]?.withOpacity(0.3)
+                                          : Colors.transparent,
+                                    );
+                                  },
+                                ),
+                                // Repas existants
+                                ...joursRepas.map((jourRepas) => FutureBuilder<Repas?>(
+                                  future: _getRepas(jourRepas.repasId),
+                                  builder: (context, repasSnapshot) {
+                                    if (!repasSnapshot.hasData) {
+                                      return const SizedBox.shrink();
+                                    }
+                                    final repas = repasSnapshot.data!;
+                                    return Material(
+                                      color: Colors.transparent,
+                                      child: Container(
+                                        margin: const EdgeInsets.all(4),
+                                        decoration: BoxDecoration(
+                                          color: Colors.blue[100],
+                                          borderRadius: BorderRadius.circular(4),
+                                        ),
+                                        child: ListTile(
+                                          dense: true,
+                                          contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+                                          title: Row(
+                                            children: [
+                                              Expanded(
+                                                child: Text(
+                                                  repas.nom,
+                                                  style: const TextStyle(fontSize: 12),
+                                                  overflow: TextOverflow.ellipsis,
+                                                ),
+                                              ),
+                                              const Icon(
+                                                Icons.visibility_outlined,
+                                                size: 16,
+                                                color: Colors.black54,
+                                              ),
+                                            ],
+                                          ),
+                                          onTap: () async {
+                                            final aliments = await _alimentService.getAllAliments();
+                                            if (!mounted) return;
+                                            
+                                            showModalBottomSheet(
+                                              context: context,
+                                              builder: (context) => Column(
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: [
+                                                  ListTile(
+                                                    leading: const Icon(Icons.visibility),
+                                                    title: const Text('Voir les détails'),
+                                                    onTap: () {
+                                                      Navigator.pop(context);
+                                                      _afficherDetailsRepas(context, repas, aliments);
+                                                    },
+                                                  ),
+                                                  ListTile(
+                                                    leading: const Icon(Icons.delete, color: Colors.red),
+                                                    title: const Text('Retirer de l\'agenda', style: TextStyle(color: Colors.red)),
+                                                    onTap: () {
+                                                      Navigator.pop(context);
+                                                      _confirmerSuppressionJourRepas(context, jourRepas);
+                                                    },
+                                                  ),
+                                                ],
+                                              ),
+                                            );
+                                          },
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                )),
+                              ],
+                            ),
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
+                    );
+                  },
                 );
               },
             ),
@@ -244,6 +364,22 @@ class _RepasScreenState extends State<RepasScreen> {
         ],
       ),
     );
+  }
+
+  Future<Map<int, List<JourRepas>>> _getJoursRepasParHeure(DateTime date) async {
+    final joursRepas = await _storageService.getJoursRepas(date: date);
+    final Map<int, List<JourRepas>> repasParHeure = {};
+    
+    for (var jourRepas in joursRepas) {
+      repasParHeure.putIfAbsent(jourRepas.heure, () => []).add(jourRepas);
+    }
+    
+    return repasParHeure;
+  }
+
+  Future<Repas?> _getRepas(String id) async {
+    final repas = await _storageService.getRepas();
+    return repas.firstWhere((r) => r.id == id);
   }
 
   Widget _buildMealListSection() {
@@ -512,11 +648,10 @@ class _RepasScreenState extends State<RepasScreen> {
   }
 
   Future<Map<String, double>> _calculerNutrimentsJour(DateTime date) async {
+    final joursRepas = await _storageService.getJoursRepas(date: date);
     final repas = await _storageService.getRepas();
-    final repasJour = repas.where((r) => 
-      r.dateHeure.year == date.year && 
-      r.dateHeure.month == date.month && 
-      r.dateHeure.day == date.day
+    final repasJour = joursRepas.map((jr) => 
+      repas.firstWhere((r) => r.id == jr.repasId)
     ).toList();
 
     double calories = 0;
@@ -565,70 +700,15 @@ class _RepasScreenState extends State<RepasScreen> {
                       ),
                     ),
                   ),
-                  Row(
-                    children: [
-                      IconButton(
-                        icon: const Icon(Icons.edit),
-                        onPressed: () async {
-                          Navigator.pop(context);
-                          final result = await Navigator.push<bool>(
-                            context,
-                            MaterialPageRoute(
-                              builder: (context) => AjouterRepasScreen(repasAModifier: repas),
-                            ),
-                          );
-                          if (result == true) {
-                            setState(() {});
-                          }
-                        },
-                        tooltip: 'Modifier',
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.delete),
-                        onPressed: () async {
-                          final confirme = await showDialog<bool>(
-                            context: context,
-                            builder: (context) => AlertDialog(
-                              title: const Text('Confirmer la suppression'),
-                              content: const Text('Voulez-vous vraiment supprimer ce repas ?'),
-                              actions: [
-                                TextButton(
-                                  onPressed: () => Navigator.pop(context, false),
-                                  child: const Text('Annuler'),
-                                ),
-                                TextButton(
-                                  onPressed: () => Navigator.pop(context, true),
-                                  child: const Text(
-                                    'Supprimer',
-                                    style: TextStyle(color: Colors.red),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          );
-
-                          if (confirme == true) {
-                            await _storageService.deleteRepas(repas.id);
-                            if (mounted) {
-                              Navigator.pop(context);
-                              setState(() {});
-                            }
-                          }
-                        },
-                        tooltip: 'Supprimer',
-                        color: Colors.red,
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.close),
-                        onPressed: () => Navigator.of(context).pop(),
-                        tooltip: 'Fermer',
-                      ),
-                    ],
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: () => Navigator.of(context).pop(),
+                    tooltip: 'Fermer',
                   ),
                 ],
               ),
               Text(
-                'Date : ${_dateFormat.format(repas.dateHeure)}',
+                'Date : ${_dateFormat.format(repas.createdAt!)}',
                 style: const TextStyle(
                   fontSize: 16,
                   color: Colors.grey,
@@ -651,8 +731,8 @@ class _RepasScreenState extends State<RepasScreen> {
                     final aliment = aliments.firstWhere(
                       (a) => a.id == repasAliment.alimentId,
                       orElse: () => Aliment(
-                        id: '',
-                        nom: 'Aliment inconnu',
+                        id: repasAliment.alimentId,
+                        nom: 'Aliment supprimé',
                         unite: UniteBase.gramme,
                         prixUnitaire: 0,
                         devise: '€',
@@ -675,157 +755,43 @@ class _RepasScreenState extends State<RepasScreen> {
 
                     final ratio = repasAliment.quantite / 100;
                     return Card(
-                      margin: const EdgeInsets.symmetric(vertical: 2.0),
-                      child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          ListTile(
-                            contentPadding: const EdgeInsets.fromLTRB(16.0, 4.0, 8.0, 0.0),
-                            title: Text(
-                              aliment.nom,
-                              style: const TextStyle(fontWeight: FontWeight.bold),
-                            ),
-                            subtitle: Text(quantiteAffichee),
-                            trailing: IconButton(
-                              icon: const Icon(Icons.visibility_outlined),
-                              onPressed: () {
-                                showDialog(
-                                  context: context,
-                                  builder: (context) => Dialog(
-                                    child: Container(
-                                      width: MediaQuery.of(context).size.width * 0.8,
-                                      padding: const EdgeInsets.all(24),
-                                      child: Column(
-                                        mainAxisSize: MainAxisSize.min,
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          Row(
-                                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                            children: [
-                                              Expanded(
-                                                child: Text(
-                                                  aliment.nom,
-                                                  style: const TextStyle(
-                                                    fontSize: 20,
-                                                    fontWeight: FontWeight.bold,
-                                                  ),
-                                                ),
-                                              ),
-                                              IconButton(
-                                                icon: const Icon(Icons.close),
-                                                onPressed: () => Navigator.of(context).pop(),
-                                              ),
-                                            ],
-                                          ),
-                                          const SizedBox(height: 8),
-                                          Text(
-                                            quantiteAffichee,
-                                            style: const TextStyle(
-                                              fontSize: 16,
-                                              color: Colors.grey,
-                                            ),
-                                          ),
-                                          const SizedBox(height: 16),
-                                          _buildNutrimentDetail('Calories', aliment.calories * ratio, 'kcal', Colors.blue),
-                                          _buildNutrimentDetail('Protéines', aliment.proteines * ratio, 'g', Colors.red),
-                                          _buildNutrimentDetail('Lipides', aliment.lipides * ratio, 'g', Colors.orange),
-                                          _buildNutrimentDetail('Glucides', aliment.glucides * ratio, 'g', Colors.green),
-                                          const Divider(height: 32),
-                                          FutureBuilder<ParametresNutritionnels?>(
-                                            future: _storageService.getParametresNutritionnels(),
-                                            builder: (context, snapshot) {
-                                              if (!snapshot.hasData) {
-                                                return const SizedBox.shrink();
-                                              }
-
-                                              final objectifs = snapshot.data!;
-                                              return Column(
-                                                crossAxisAlignment: CrossAxisAlignment.start,
-                                                children: [
-                                                  const Text(
-                                                    'Pourcentage des objectifs journaliers',
-                                                    style: TextStyle(
-                                                      fontWeight: FontWeight.bold,
-                                                      fontSize: 16,
-                                                    ),
-                                                  ),
-                                                  const SizedBox(height: 16),
-                                                  Row(
-                                                    mainAxisAlignment: MainAxisAlignment.spaceAround,
-                                                    children: [
-                                                      _buildPourcentageObjectif('Calories', aliment.calories * ratio, objectifs.caloriesQuotidiennes, Colors.blue),
-                                                      _buildPourcentageObjectif('Protéines', aliment.proteines * ratio, objectifs.objectifProteinesGrammes, Colors.red),
-                                                      _buildPourcentageObjectif('Lipides', aliment.lipides * ratio, objectifs.objectifLipidesGrammes, Colors.orange),
-                                                      _buildPourcentageObjectif('Glucides', aliment.glucides * ratio, objectifs.objectifGlucidesGrammes, Colors.green),
-                                                    ],
-                                                  ),
-                                                ],
-                                              );
-                                            },
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ),
-                                );
-                              },
-                            ),
+                      margin: const EdgeInsets.symmetric(vertical: 2),
+                      child: ListTile(
+                        title: Text(
+                          aliment.nom,
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            color: aliment.nom == 'Aliment supprimé' ? Colors.red : null,
                           ),
-                          Padding(
-                            padding: const EdgeInsets.fromLTRB(16.0, 0.0, 16.0, 8.0),
-                            child: Row(
+                        ),
+                        subtitle: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(quantiteAffichee),
+                            const SizedBox(height: 4),
+                            Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                RichText(
-                                  text: TextSpan(
-                                    style: DefaultTextStyle.of(context).style.copyWith(fontSize: 11),
-                                    children: [
-                                      TextSpan(
-                                        text: '${(aliment.calories * ratio).toStringAsFixed(0)}',
-                                        style: const TextStyle(
-                                          color: Colors.blue,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                      const TextSpan(text: ' kcal'),
-                                    ],
-                                  ),
+                                Text(
+                                  '${(aliment.calories * ratio).toStringAsFixed(0)} kcal',
+                                  style: const TextStyle(color: Colors.blue),
                                 ),
-                                RichText(
-                                  text: TextSpan(
-                                    style: DefaultTextStyle.of(context).style.copyWith(fontSize: 11),
-                                    children: [
-                                      TextSpan(
-                                        text: '${(aliment.proteines * ratio).toStringAsFixed(1)}',
-                                        style: const TextStyle(
-                                          color: Colors.red,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                      const TextSpan(text: 'P '),
-                                      TextSpan(
-                                        text: '${(aliment.lipides * ratio).toStringAsFixed(1)}',
-                                        style: const TextStyle(
-                                          color: Colors.orange,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                      const TextSpan(text: 'L '),
-                                      TextSpan(
-                                        text: '${(aliment.glucides * ratio).toStringAsFixed(1)}',
-                                        style: const TextStyle(
-                                          color: Colors.green,
-                                          fontWeight: FontWeight.bold,
-                                        ),
-                                      ),
-                                      const TextSpan(text: 'G'),
-                                    ],
-                                  ),
+                                Text(
+                                  'P: ${(aliment.proteines * ratio).toStringAsFixed(1)}g',
+                                  style: const TextStyle(color: Colors.red),
+                                ),
+                                Text(
+                                  'L: ${(aliment.lipides * ratio).toStringAsFixed(1)}g',
+                                  style: const TextStyle(color: Colors.orange),
+                                ),
+                                Text(
+                                  'G: ${(aliment.glucides * ratio).toStringAsFixed(1)}g',
+                                  style: const TextStyle(color: Colors.green),
                                 ),
                               ],
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     );
                   },
@@ -836,54 +802,66 @@ class _RepasScreenState extends State<RepasScreen> {
                 future: repas.calculerNutriments(aliments),
                 builder: (context, snapshot) {
                   if (!snapshot.hasData) {
-                    return const Center(child: CircularProgressIndicator());
+                    return const Center(
+                      child: Padding(
+                        padding: EdgeInsets.all(8.0),
+                        child: CircularProgressIndicator(),
+                      ),
+                    );
                   }
 
                   final nutriments = snapshot.data!;
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          const Text(
-                            'Total',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
+                      const Text(
+                        'Total',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                       const SizedBox(height: 8),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceAround,
                         children: [
-                          _buildNutrimentTotal('Calories', nutriments['calories']!, 'kcal', Colors.blue),
-                          _buildNutrimentTotal('Protéines', nutriments['proteines']!, 'g', Colors.red),
-                          _buildNutrimentTotal('Lipides', nutriments['lipides']!, 'g', Colors.orange),
-                          _buildNutrimentTotal('Glucides', nutriments['glucides']!, 'g', Colors.green),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      FutureBuilder<ParametresNutritionnels?>(
-                        future: _storageService.getParametresNutritionnels(),
-                        builder: (context, objectifsSnapshot) {
-                          if (!objectifsSnapshot.hasData) {
-                            return const SizedBox.shrink();
-                          }
-
-                          final objectifs = objectifsSnapshot.data!;
-                          return Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceAround,
+                          Column(
                             children: [
-                              _buildPourcentageObjectif('Calories', nutriments['calories']!, objectifs.caloriesQuotidiennes, Colors.blue),
-                              _buildPourcentageObjectif('Protéines', nutriments['proteines']!, objectifs.objectifProteinesGrammes, Colors.red),
-                              _buildPourcentageObjectif('Lipides', nutriments['lipides']!, objectifs.objectifLipidesGrammes, Colors.orange),
-                              _buildPourcentageObjectif('Glucides', nutriments['glucides']!, objectifs.objectifGlucidesGrammes, Colors.green),
+                              const Text('Calories', style: TextStyle(color: Colors.blue)),
+                              Text(
+                                '${nutriments['calories']?.toStringAsFixed(0)} kcal',
+                                style: const TextStyle(fontWeight: FontWeight.bold),
+                              ),
                             ],
-                          );
-                        },
+                          ),
+                          Column(
+                            children: [
+                              const Text('Protéines', style: TextStyle(color: Colors.red)),
+                              Text(
+                                '${nutriments['proteines']?.toStringAsFixed(1)}g',
+                                style: const TextStyle(fontWeight: FontWeight.bold),
+                              ),
+                            ],
+                          ),
+                          Column(
+                            children: [
+                              const Text('Lipides', style: TextStyle(color: Colors.orange)),
+                              Text(
+                                '${nutriments['lipides']?.toStringAsFixed(1)}g',
+                                style: const TextStyle(fontWeight: FontWeight.bold),
+                              ),
+                            ],
+                          ),
+                          Column(
+                            children: [
+                              const Text('Glucides', style: TextStyle(color: Colors.green)),
+                              Text(
+                                '${nutriments['glucides']?.toStringAsFixed(1)}g',
+                                style: const TextStyle(fontWeight: FontWeight.bold),
+                              ),
+                            ],
+                          ),
+                        ],
                       ),
                     ],
                   );
@@ -896,90 +874,46 @@ class _RepasScreenState extends State<RepasScreen> {
     );
   }
 
-  Widget _buildNutrimentDetail(String label, double value, String unit, Color color) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 4.0),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            label,
-            style: TextStyle(
-              color: color,
-              fontWeight: FontWeight.bold,
-            ),
+  Future<void> _confirmerSuppressionJourRepas(BuildContext context, JourRepas jourRepas) async {
+    final repas = await _getRepas(jourRepas.repasId);
+    if (repas == null) return;
+
+    if (!context.mounted) return;
+    
+    final confirme = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Supprimer le repas'),
+        content: Text('Voulez-vous vraiment supprimer "${repas.nom}" de cette plage horaire ?'),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Annuler'),
           ),
-          Text(
-            '${value.toStringAsFixed(1)} $unit',
-            style: const TextStyle(
-              fontWeight: FontWeight.bold,
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: TextButton.styleFrom(
+              foregroundColor: Colors.red,
             ),
+            child: const Text('Supprimer'),
           ),
         ],
       ),
     );
+
+    if (confirme == true) {
+      await _storageService.deleteJourRepas(jourRepas.id);
+      if (mounted) {
+        setState(() {});
+      }
+    }
   }
 
-  Widget _buildPourcentageNutriment(String label, double calories, double totalCalories, Color color) {
-    final pourcentage = totalCalories > 0 ? (calories / totalCalories * 100).round() : 0;
-    return Column(
-      children: [
-        Text(
-          '$label',
-          style: TextStyle(
-            color: color,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        Text(
-          '$pourcentage%',
-          style: const TextStyle(
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildNutrimentTotal(String label, double value, String unit, Color color) {
-    return Column(
-      children: [
-        Text(
-          label,
-          style: TextStyle(
-            color: color,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        Text(
-          '${value.toStringAsFixed(1)} $unit',
-          style: const TextStyle(
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildPourcentageObjectif(String label, double valeur, double objectif, Color color) {
-    final pourcentage = (valeur / objectif * 100).round();
-    return Column(
-      children: [
-        Text(
-          label,
-          style: TextStyle(
-            color: color,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        Text(
-          '$pourcentage%',
-          style: TextStyle(
-            fontWeight: FontWeight.bold,
-            color: pourcentage > 100 ? Colors.red : color,
-          ),
-        ),
-      ],
+  Future<bool> _verifierDisponibiliteHoraire(int heure) async {
+    final joursRepas = await _storageService.getJoursRepas(date: _selectedDate);
+    return !joursRepas.any((jr) => 
+      jr.heure == heure && 
+      (jr.minute >= 0 && jr.minute < 60)
     );
   }
 } 

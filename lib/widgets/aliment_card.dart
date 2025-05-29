@@ -9,6 +9,7 @@ import 'package:logging/logging.dart';
 class AlimentCard extends StatelessWidget {
   final Aliment aliment;
   final VoidCallback onModified;
+  final VoidCallback onDelete;
   final _alimentService = AlimentService();
   final _logger = Logger('AlimentCard');
 
@@ -16,7 +17,16 @@ class AlimentCard extends StatelessWidget {
     super.key,
     required this.aliment,
     required this.onModified,
+    required this.onDelete,
   });
+
+  Future<void> _modifierAliment(BuildContext context) async {
+    final result = await AlimentDialog.show(context, aliment: aliment);
+    if (result != null) {
+      await _alimentService.updateAliment(result);
+      onModified();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -104,27 +114,14 @@ class AlimentCard extends StatelessWidget {
                       ),
                     IconButton(
                       icon: const Icon(Icons.edit),
-                      onPressed: () async {
-                        try {
-                          final result = await AlimentDialog.show(
-                            context,
-                            aliment: aliment,
-                          );
-                          if (result != null) {
-                            await _alimentService.updateAliment(result);
-                            onModified();
-                          }
-                        } catch (e) {
-                          _logger.severe('Erreur lors de la modification: $e');
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(
-                              content: Text('Erreur lors de la modification: $e'),
-                              backgroundColor: Colors.red,
-                            ),
-                          );
-                        }
-                      },
+                      onPressed: () => _modifierAliment(context),
                       tooltip: 'Modifier',
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.delete),
+                      onPressed: onDelete,
+                      color: Colors.red,
+                      tooltip: 'Supprimer',
                     ),
                   ],
                 ),

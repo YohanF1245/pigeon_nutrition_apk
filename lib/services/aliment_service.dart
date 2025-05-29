@@ -2,6 +2,7 @@ import 'package:sqflite/sqflite.dart';
 import '../models/aliment.dart';
 import 'database_service.dart';
 import 'package:logging/logging.dart';
+import '../models/repas.dart';
 
 class AlimentService {
   final _databaseService = DatabaseService();
@@ -164,5 +165,27 @@ class AlimentService {
       _logger.severe('Erreur lors de la mise à jour du stock: $e');
       rethrow;
     }
+  }
+
+  Future<List<Repas>> getRepasUtilisantAliment(String alimentId) async {
+    final db = await DatabaseService().database;
+    final repasAliments = await db.query(
+      'repas_aliments',
+      where: 'aliment_id = ?',
+      whereArgs: [alimentId],
+    );
+
+    if (repasAliments.isEmpty) {
+      return [];
+    }
+
+    final repasIds = repasAliments.map((ra) => ra['repas_id'] as String).toSet();
+    final repas = await db.query(
+      'repas',
+      where: 'id IN (${List.filled(repasIds.length, '?').join(',')})',
+      whereArgs: repasIds.toList(),
+    );
+
+    return repas.map((r) => Repas.fromMap(r)).toList();
   }
 } 

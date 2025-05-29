@@ -52,23 +52,149 @@ class _AlimentsScreenState extends State<AlimentsScreen> {
   }
 
   Future<void> _supprimerAliment(Aliment aliment) async {
-    try {
-      await _alimentService.deleteAliment(aliment.id);
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Aliment supprimé avec succès'),
+    // Vérifier si l'aliment est utilisé dans des repas
+    final repasUtilisantAliment = await _alimentService.getRepasUtilisantAliment(aliment.id);
+    if (!mounted) return;
+
+    final confirme = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Confirmer la suppression'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text('Voulez-vous vraiment supprimer "${aliment.nom}" ?'),
+            const SizedBox(height: 8),
+            Card(
+              child: Padding(
+                padding: const EdgeInsets.all(8.0),
+                child: Column(
+                  children: [
+                    const Text(
+                      'Valeurs nutritionnelles :',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                    const SizedBox(height: 4),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceAround,
+                      children: [
+                        Column(
+                          children: [
+                            const Text('Calories', style: TextStyle(color: Colors.blue)),
+                            Text(
+                              '${aliment.calories.toStringAsFixed(0)} kcal',
+                              style: const TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                          ],
+                        ),
+                        Column(
+                          children: [
+                            const Text('Protéines', style: TextStyle(color: Colors.red)),
+                            Text(
+                              '${aliment.proteines.toStringAsFixed(1)}g',
+                              style: const TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceAround,
+                      children: [
+                        Column(
+                          children: [
+                            const Text('Lipides', style: TextStyle(color: Colors.orange)),
+                            Text(
+                              '${aliment.lipides.toStringAsFixed(1)}g',
+                              style: const TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                          ],
+                        ),
+                        Column(
+                          children: [
+                            const Text('Glucides', style: TextStyle(color: Colors.green)),
+                            Text(
+                              '${aliment.glucides.toStringAsFixed(1)}g',
+                              style: const TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            if (repasUtilisantAliment.isNotEmpty) ...[
+              const SizedBox(height: 16),
+              Text(
+                'Attention : Cet aliment est utilisé dans ${repasUtilisantAliment.length} repas.',
+                style: const TextStyle(
+                  color: Colors.red,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'La suppression de cet aliment affectera les repas suivants :',
+                style: TextStyle(fontStyle: FontStyle.italic),
+              ),
+              const SizedBox(height: 4),
+              Container(
+                constraints: BoxConstraints(
+                  maxHeight: MediaQuery.of(context).size.height * 0.2,
+                ),
+                child: SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: repasUtilisantAliment.map((repas) => 
+                      Padding(
+                        padding: const EdgeInsets.symmetric(vertical: 2),
+                        child: Text('• ${repas.nom}'),
+                      ),
+                    ).toList(),
+                  ),
+                ),
+              ),
+            ],
+          ],
         ),
-      );
-      _chargerAliments();
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Erreur lors de la suppression: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: const Text('Annuler'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            style: TextButton.styleFrom(
+              foregroundColor: Colors.red,
+            ),
+            child: const Text('Supprimer'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirme == true) {
+      try {
+        await _alimentService.deleteAliment(aliment.id);
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Aliment supprimé avec succès'),
+          ),
+        );
+        _chargerAliments();
+      } catch (e) {
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Erreur lors de la suppression: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 

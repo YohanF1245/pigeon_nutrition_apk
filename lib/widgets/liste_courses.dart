@@ -131,51 +131,73 @@ class _ListeCoursesState extends State<ListeCourses> {
 
   Widget _buildListView() {
     return ListView.builder(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
       itemCount: _alimentsEnRupture.length,
       itemBuilder: (context, index) {
         final aliment = _alimentsEnRupture[index];
-        return CheckboxListTile(
-          value: _itemsChecked[aliment.id] ?? false,
-          onChanged: (bool? value) {
-            _updateCheckedState(aliment.id, value);
-          },
-          title: Text(aliment.nom),
-          subtitle: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                'Stock: ${aliment.getStockDisplay()}',
-                style: const TextStyle(color: Colors.orange),
-              ),
-              Row(
-                children: [
-                  Expanded(
-                    child: TextFormField(
-                      initialValue: (_quantitesAchats[aliment.id] ?? aliment.quantiteAchatParDefaut).toStringAsFixed(0),
-                      decoration: InputDecoration(
-                        labelText: 'À acheter',
-                        suffixText: aliment.unitePortionLabel ?? aliment.unite.symbole,
-                        isDense: true,
+        return Card(
+          margin: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+          child: Padding(
+            padding: const EdgeInsets.all(8.0),
+            child: Row(
+              children: [
+                Checkbox(
+                  value: _itemsChecked[aliment.id] ?? false,
+                  onChanged: (bool? value) {
+                    _updateCheckedState(aliment.id, value);
+                  },
+                ),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        aliment.nom,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
-                      keyboardType: TextInputType.number,
-                      onChanged: (value) {
-                        final newQuantite = double.tryParse(value);
-                        if (newQuantite != null) {
-                          _updateQuantiteAchat(aliment.id, newQuantite);
-                        }
-                      },
-                    ),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Text(
+                              'Stock: ${aliment.getStockDisplay()}',
+                              style: TextStyle(
+                                color: Colors.orange[700],
+                                fontSize: 12,
+                              ),
+                            ),
+                          ),
+                          SizedBox(
+                            width: 80,
+                            child: TextFormField(
+                              initialValue: (_quantitesAchats[aliment.id] ?? aliment.quantiteAchatParDefaut).toStringAsFixed(0),
+                              decoration: InputDecoration(
+                                isDense: true,
+                                contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                suffixText: aliment.unitePortionLabel ?? aliment.unite.symbole,
+                              ),
+                              style: const TextStyle(fontSize: 12),
+                              keyboardType: TextInputType.number,
+                              onChanged: (value) {
+                                final newQuantite = double.tryParse(value);
+                                if (newQuantite != null) {
+                                  _updateQuantiteAchat(aliment.id, newQuantite);
+                                }
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
-                ],
-              ),
-            ],
-          ),
-          secondary: IconButton(
-            icon: const Icon(Icons.shopping_cart),
-            onPressed: () {
-              // TODO: Implémenter l'achat rapide
-            },
-            tooltip: 'Achat rapide',
+                ),
+              ],
+            ),
           ),
         );
       },
@@ -202,9 +224,42 @@ class _ListeCoursesState extends State<ListeCourses> {
 
     final contenu = Column(
       children: [
-        Expanded(
-          child: _buildListView(),
+        // Barre de compte compacte
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 8.0),
+          decoration: BoxDecoration(
+            color: Theme.of(context).colorScheme.surface,
+            border: Border(
+              bottom: BorderSide(
+                color: Theme.of(context).dividerColor,
+              ),
+            ),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Articles restants: $_itemsRestants',
+                style: const TextStyle(
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              Text(
+                'Total: ${_alimentsEnRupture.length}',
+                style: TextStyle(
+                  color: Theme.of(context).textTheme.bodySmall?.color,
+                ),
+              ),
+            ],
+          ),
         ),
+        // Liste scrollable
+        Expanded(
+          child: SingleChildScrollView(
+            child: _buildListView(),
+          ),
+        ),
+        // Bouton de validation
         Padding(
           padding: const EdgeInsets.all(16.0),
           child: ElevatedButton.icon(

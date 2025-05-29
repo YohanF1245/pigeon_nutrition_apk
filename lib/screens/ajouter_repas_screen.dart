@@ -8,7 +8,12 @@ import 'package:uuid/uuid.dart';
 import '../models/unite_base.dart';
 
 class AjouterRepasScreen extends StatefulWidget {
-  const AjouterRepasScreen({super.key});
+  final Repas? repasAModifier;
+  
+  const AjouterRepasScreen({
+    super.key,
+    this.repasAModifier,
+  });
 
   @override
   State<AjouterRepasScreen> createState() => _AjouterRepasScreenState();
@@ -20,16 +25,24 @@ class _AjouterRepasScreenState extends State<AjouterRepasScreen> {
   final DateFormat _dateFormat = DateFormat('dd/MM/yyyy HH:mm');
   final TextEditingController _titreController = TextEditingController();
   final TextEditingController _quantiteController = TextEditingController();
-  DateTime _dateHeure = DateTime.now();
-  final Map<String, double> _alimentsSelectionnes = {};
+  late DateTime _dateHeure;
+  late final Map<String, double> _alimentsSelectionnes;
   List<Aliment> _aliments = [];
   bool _isLoading = false;
 
   @override
   void initState() {
     super.initState();
+    _dateHeure = widget.repasAModifier?.dateHeure ?? DateTime.now();
+    _alimentsSelectionnes = widget.repasAModifier?.aliments.fold<Map<String, double>>(
+      {},
+      (map, repasAliment) {
+        map[repasAliment.alimentId] = repasAliment.quantite;
+        return map;
+      },
+    ) ?? {};
+    _titreController.text = widget.repasAModifier?.nom ?? 'Repas du ${_dateFormat.format(_dateHeure)}';
     _chargerAliments();
-    _titreController.text = 'Repas du ${_dateFormat.format(_dateHeure)}';
   }
 
   @override
@@ -169,7 +182,16 @@ class _AjouterRepasScreenState extends State<AjouterRepasScreen> {
 
     setState(() => _isLoading = true);
     try {
-      final repas = Repas(
+      final repas = widget.repasAModifier?.copyWith(
+        nom: _titreController.text,
+        dateHeure: _dateHeure,
+        aliments: _alimentsSelectionnes.entries
+            .map((e) => RepasAliment(
+                  alimentId: e.key,
+                  quantite: e.value,
+                ))
+            .toList(),
+      ) ?? Repas(
         nom: _titreController.text,
         dateHeure: _dateHeure,
         aliments: _alimentsSelectionnes.entries
@@ -193,7 +215,7 @@ class _AjouterRepasScreenState extends State<AjouterRepasScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Nouveau repas'),
+        title: Text(widget.repasAModifier != null ? 'Modifier le repas' : 'Nouveau repas'),
         actions: [
           IconButton(
             icon: const Icon(Icons.check),

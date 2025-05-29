@@ -3,11 +3,15 @@ import 'package:path/path.dart';
 import '../models/aliment.dart';
 import 'package:logging/logging.dart';
 import 'aliment_service.dart';
+import 'package:uuid/uuid.dart';
+import 'repas_service.dart';
+import 'jour_repas_service.dart';
 
 class DatabaseService {
   static final DatabaseService _instance = DatabaseService._internal();
   static Database? _database;
   final _logger = Logger('DatabaseService');
+  static bool _isInitializing = false;
 
   factory DatabaseService() {
     return _instance;
@@ -17,16 +21,40 @@ class DatabaseService {
 
   Future<Database> get database async {
     if (_database != null) return _database!;
-    _database = await _initDatabase();
-    return _database!;
+    
+    // Éviter les initialisations multiples
+    while (_isInitializing) {
+      await Future.delayed(const Duration(milliseconds: 100));
+    }
+    
+    if (_database != null) return _database!;
+    
+    _isInitializing = true;
+    try {
+      _database = await _initDatabase();
+      return _database!;
+    } finally {
+      _isInitializing = false;
+    }
   }
 
   Future<Database> _initDatabase() async {
-    final path = await getDatabasePath();
+    final databasesPath = await getDatabasesPath();
+    final path = join(databasesPath, 'pigeon_nutrition.db');
+
     return await openDatabase(
       path,
-      version: 1,
-      onCreate: _onCreate,
+      version: 2,
+      onCreate: (db, version) async {
+        _logger.info('Création de la base de données v$version');
+        await _createTables(db);
+      },
+      onUpgrade: (db, oldVersion, newVersion) async {
+        _logger.info('Migration de la base de données v$oldVersion -> v$newVersion');
+        if (oldVersion == 1) {
+          await _migrateV1ToV2(db);
+        }
+      },
     );
   }
 
@@ -36,90 +64,124 @@ class DatabaseService {
   }
 
   Future<void> close() async {
-    final db = await database;
-    await db.close();
-    _database = null;
-  }
-
-  Future<void> _onCreate(Database db, int version) async {
-    await db.execute('''
-      CREATE TABLE IF NOT EXISTS aliments (
-        id TEXT PRIMARY KEY,
-        nom TEXT NOT NULL,
-        unite TEXT NOT NULL,
-        prixUnitaire REAL NOT NULL,
-        devise TEXT NOT NULL,
-        gestionStock INTEGER NOT NULL,
-        quantiteStock REAL NOT NULL,
-        seuilAlerte REAL,
-        decrementationJournaliere REAL,
-        quantiteAchatParDefaut REAL NOT NULL,
-        calories REAL NOT NULL,
-        proteines REAL NOT NULL,
-        lipides REAL NOT NULL,
-        glucides REAL NOT NULL,
-        poidsUnitaire REAL,
-        unitePortionLabel TEXT,
-        nombreUniteParLot INTEGER
-      )
-    ''');
-  }
-
-  Future<void> _onUpgrade(Database db, int oldVersion, int newVersion) async {
-    _logger.info('Migration de la base de données de la version $oldVersion vers $newVersion');
-    
-    if (oldVersion < 2) {
-      _logger.info('Début de la migration vers la version 2');
-      
-      // Sauvegarde des données existantes
-      _logger.info('Sauvegarde des données existantes');
-      final List<Map<String, dynamic>> oldData = await db.query('aliments');
-      _logger.info('Nombre d\'enregistrements à migrer: ${oldData.length}');
-
-      // Suppression de l'ancienne table
-      _logger.info('Suppression de l\'ancienne table');
-      await db.execute('DROP TABLE IF EXISTS aliments');
-
-      // Création de la nouvelle table
-      _logger.info('Création de la nouvelle table avec la nouvelle structure');
-      await _onCreate(db, newVersion);
-
-      // Restauration des données
-      _logger.info('Restauration des données dans la nouvelle structure');
-      for (var item in oldData) {
-        try {
-          await db.insert('aliments', {
-            'id': item['id'],
-            'nom': item['nom'],
-            'unite': item['unite'],
-            'prixUnitaire': item['prixUnitaire'],
-            'devise': item['devise'],
-            'gestionStock': item['gestionStock'],
-            'quantiteStock': item['quantiteStock'],
-            'seuilAlerte': item['seuilAlerte'],
-            'decrementationJournaliere': item['decrementationJournaliere'],
-            'quantiteAchatParDefaut': item['quantiteAchatParDefaut'],
-            'calories': item['calories'],
-            'proteines': item['proteines'],
-            'lipides': item['lipides'],
-            'glucides': item['glucides'],
-            'poidsUnitaire': null,
-            'unitePortionLabel': null,
-            'nombreUniteParLot': null,
-          });
-          _logger.info('Migré avec succès: ${item['nom']}');
-        } catch (e) {
-          _logger.severe('Erreur lors de la migration de ${item['nom']}: $e');
-        }
-      }
-      _logger.info('Migration vers la version 2 terminée');
+    final db = _database;
+    if (db != null) {
+      await db.close();
+      _database = null;
     }
+  }
+
+  Future<void> _createTables(Database db) async {
+    // Créer toutes les tables dans une seule transaction
+    await db.transaction((txn) async {
+      // Table aliments
+      await txn.execute('''
+        CREATE TABLE IF NOT EXISTS aliments (
+          id TEXT PRIMARY KEY,
+          nom TEXT NOT NULL,
+          calories REAL,
+          proteines REAL,
+          lipides REAL,
+          glucides REAL,
+          fibres REAL,
+          quantiteStock REAL,
+          uniteBase TEXT,
+          gestionStock INTEGER,
+          seuilAlerte REAL,
+          decrementationJournaliere REAL
+        )
+      ''');
+
+      // Table repas
+      await txn.execute('''
+        CREATE TABLE IF NOT EXISTS repas (
+          id TEXT PRIMARY KEY,
+          nom TEXT NOT NULL,
+          description TEXT,
+          ingredients TEXT NOT NULL
+        )
+      ''');
+
+      // Table jours_repas
+      await txn.execute('''
+        CREATE TABLE IF NOT EXISTS jours_repas (
+          id TEXT PRIMARY KEY,
+          date TEXT NOT NULL,
+          repasId TEXT NOT NULL,
+          heure INTEGER NOT NULL,
+          minute INTEGER NOT NULL,
+          FOREIGN KEY (repasId) REFERENCES repas (id) ON DELETE CASCADE
+        )
+      ''');
+    });
+  }
+
+  Future<void> _migrateV1ToV2(Database db) async {
+    await db.transaction((txn) async {
+      // 1. Récupérer tous les repas existants
+      final List<Map<String, dynamic>> oldRepas = await txn.query('repas');
+
+      // 2. Créer la nouvelle table repas
+      await txn.execute('''
+        CREATE TABLE new_repas (
+          id TEXT PRIMARY KEY,
+          nom TEXT NOT NULL,
+          nutrimentsCaches TEXT,
+          createdAt TEXT
+        )
+      ''');
+
+      // 3. Créer la table jours_repas
+      await txn.execute('''
+        CREATE TABLE jours_repas (
+          id TEXT PRIMARY KEY,
+          date TEXT NOT NULL,
+          repasId TEXT NOT NULL,
+          heure INTEGER NOT NULL,
+          minute INTEGER NOT NULL,
+          FOREIGN KEY (repasId) REFERENCES repas (id) ON DELETE CASCADE
+        )
+      ''');
+
+      // 4. Migrer les données
+      for (var repas in oldRepas) {
+        final dateHeure = DateTime.parse(repas['dateHeure']);
+        
+        // Insérer dans la nouvelle table repas
+        await txn.insert(
+          'new_repas',
+          {
+            'id': repas['id'],
+            'nom': repas['nom'],
+            'nutrimentsCaches': repas['nutrimentsCaches'],
+            'createdAt': dateHeure.toIso8601String(),
+          },
+        );
+
+        // Créer l'entrée dans jours_repas
+        await txn.insert(
+          'jours_repas',
+          {
+            'id': const Uuid().v4(),
+            'date': DateTime(dateHeure.year, dateHeure.month, dateHeure.day).toIso8601String(),
+            'repasId': repas['id'],
+            'heure': dateHeure.hour,
+            'minute': dateHeure.minute,
+          },
+        );
+      }
+
+      // 5. Supprimer l'ancienne table et renommer la nouvelle
+      await txn.execute('DROP TABLE repas');
+      await txn.execute('ALTER TABLE new_repas RENAME TO repas');
+    });
+
+    _logger.info('Migration v1 -> v2 terminée');
   }
 
   Future<void> insertAliment(Aliment aliment) async {
     try {
       final db = await database;
-      _logger.info('Tentative d\'insertion de l\'aliment: ${aliment.toMap()}');
       await db.insert(
         'aliments',
         aliment.toMap(),
@@ -136,13 +198,8 @@ class DatabaseService {
   Future<List<Aliment>> getAliments() async {
     try {
       final db = await database;
-      _logger.info('Récupération de tous les aliments');
       final List<Map<String, dynamic>> maps = await db.query('aliments');
-      _logger.info('Nombre d\'aliments trouvés: ${maps.length}');
-      return List.generate(maps.length, (i) {
-        _logger.info('Aliment ${i + 1}: ${maps[i]}');
-        return Aliment.fromMap(maps[i]);
-      });
+      return List.generate(maps.length, (i) => Aliment.fromMap(maps[i]));
     } catch (e, stackTrace) {
       _logger.severe('Erreur lors de la récupération des aliments: $e');
       _logger.severe('Stack trace: $stackTrace');
@@ -166,79 +223,13 @@ class DatabaseService {
   Future<void> updateAliment(Aliment aliment) async {
     try {
       final db = await database;
-      await _logTableStructure(db);
-
-      _logger.info('Début de la mise à jour de l\'aliment: ${aliment.id}');
-      final Map<String, dynamic> data = aliment.toMap();
-      _logger.info('Données à mettre à jour: $data');
-
-      // Vérifions d'abord si l'aliment existe
-      final List<Map<String, dynamic>> existing = await db.query(
+      await db.update(
         'aliments',
+        aliment.toMap(),
         where: 'id = ?',
         whereArgs: [aliment.id],
       );
-      _logger.info('Aliment existant trouvé: ${existing.isNotEmpty}');
-
-      if (existing.isEmpty) {
-        _logger.info('L\'aliment n\'existe pas, tentative d\'insertion...');
-        await insertAliment(aliment);
-        return;
-      }
-
-      // Mise à jour avec rawUpdate pour plus de contrôle
-      final result = await db.rawUpdate(
-        '''
-        UPDATE aliments 
-        SET nom = ?, 
-            unite = ?,
-            prixUnitaire = ?,
-            devise = ?,
-            gestionStock = ?,
-            quantiteStock = ?,
-            seuilAlerte = ?,
-            decrementationJournaliere = ?,
-            quantiteAchatParDefaut = ?,
-            calories = ?,
-            proteines = ?,
-            lipides = ?,
-            glucides = ?,
-            poidsUnitaire = ?,
-            unitePortionLabel = ?,
-            nombreUniteParLot = ?
-        WHERE id = ?
-        ''',
-        [
-          data['nom'],
-          data['unite'],
-          data['prixUnitaire'],
-          data['devise'],
-          data['gestionStock'],
-          data['quantiteStock'],
-          data['seuilAlerte'],
-          data['decrementationJournaliere'],
-          data['quantiteAchatParDefaut'],
-          data['calories'],
-          data['proteines'],
-          data['lipides'],
-          data['glucides'],
-          data['poidsUnitaire'],
-          data['unitePortionLabel'],
-          data['nombreUniteParLot'],
-          data['id'],
-        ],
-      );
-
-      _logger.info('Nombre de lignes mises à jour: $result');
-
-      // Vérifions que la mise à jour a bien été effectuée
-      final updated = await db.query(
-        'aliments',
-        where: 'id = ?',
-        whereArgs: [aliment.id],
-      );
-      _logger.info('Données après mise à jour: ${updated.first}');
-
+      _logger.info('Aliment mis à jour avec succès');
     } catch (e, stackTrace) {
       _logger.severe('Erreur lors de la mise à jour de l\'aliment: $e');
       _logger.severe('Stack trace: $stackTrace');

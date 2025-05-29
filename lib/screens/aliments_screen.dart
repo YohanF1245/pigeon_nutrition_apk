@@ -53,66 +53,15 @@ class _AlimentsScreenState extends State<AlimentsScreen> {
 
   Future<void> _supprimerAliment(Aliment aliment) async {
     try {
-      // Vérifier si l'aliment est utilisé dans des repas
-      final repasAffectes = await _alimentService.getRepasContainingAliment(aliment.id);
-      
+      await _alimentService.deleteAliment(aliment.id);
       if (!mounted) return;
-      
-      // Afficher le dialogue de confirmation
-      final confirme = await showDialog<bool>(
-        context: context,
-        builder: (BuildContext context) {
-          return AlertDialog(
-            title: const Text('Confirmation de suppression'),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text('Voulez-vous vraiment supprimer l\'aliment "${aliment.nom}" ?'),
-                if (repasAffectes.isNotEmpty) ...[
-                  const SizedBox(height: 16),
-                  const Text(
-                    'ATTENTION : Cette action supprimera également les repas suivants :',
-                    style: TextStyle(color: Colors.red),
-                  ),
-                  const SizedBox(height: 8),
-                  ...repasAffectes.map((repas) => Text(
-                    '- ${repas.nom} (${repas.dateHeure.toString()})',
-                    style: const TextStyle(fontStyle: FontStyle.italic),
-                  )),
-                ],
-              ],
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(false),
-                child: const Text('Annuler'),
-              ),
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(true),
-                style: TextButton.styleFrom(
-                  foregroundColor: Colors.red,
-                ),
-                child: const Text('Supprimer'),
-              ),
-            ],
-          );
-        },
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Aliment supprimé avec succès'),
+        ),
       );
-
-      if (confirme == true) {
-        await _alimentService.deleteAliment(aliment.id);
-        await _chargerAliments();
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Aliment supprimé avec succès'),
-            backgroundColor: Colors.green,
-          ),
-        );
-      }
+      _chargerAliments();
     } catch (e) {
-      _logger.severe('Erreur lors de la suppression: $e');
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -124,10 +73,13 @@ class _AlimentsScreenState extends State<AlimentsScreen> {
   }
 
   Future<void> _ajouterAliment() async {
-    final result = await AlimentDialog.show(context);
-    if (result != null) {
-      await _alimentService.addAliment(result);
-      await _chargerAliments();
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) => const AlimentDialog(),
+    );
+
+    if (result == true) {
+      _chargerAliments();
     }
   }
 

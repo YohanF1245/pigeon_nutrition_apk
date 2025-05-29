@@ -9,9 +9,13 @@ et ce projet adhère au [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### En cours
 - Système de gestion des repas
-  - Interface en trois parties (macros/planning/liste des repas)
-  - Vue des macronutriments journaliers avec objectifs
-  - Calendrier interactif avec planification horaire
+  - Interface divisée en trois sections :
+    - Liste des repas réutilisables (35% de la hauteur)
+    - Agenda interactif (50% de la hauteur)
+    - Vue des macronutriments journaliers
+  - Fonctionnalités de l'agenda :
+    - Planification horaire des repas par glisser-déposer
+    - Sauvegarde des données nutritionnelles par journée
   - Gestion des repas avec impact sur le stock
   - Détails nutritionnels complets par repas
 
@@ -22,11 +26,24 @@ et ce projet adhère au [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Améliorations
 - Amélioration de l'icône d'ajustement du stock pour plus de clarté
+- Amélioration de la visualisation et de l'édition des repas
+  - Ajout des boutons d'édition et de suppression dans la vue détaillée
+  - Affichage complet des nutriments pour chaque aliment (calories, protéines, lipides, glucides)
+  - Vue comparative des valeurs nutritionnelles (quantité sélectionnée vs 100g)
+  - Indication visuelle des éléments interactifs
+  - Affichage des pourcentages par rapport aux objectifs journaliers
+  - Support de la modification d'un repas existant
+- Optimisation de l'affichage des aliments dans un repas
+  - Réorganisation des informations nutritionnelles sur une ligne dédiée
+  - Ajout d'une icône pour accéder aux détails de l'aliment
+  - Simplification et amélioration de la boîte de dialogue des détails
+  - Affichage des pourcentages par rapport aux objectifs journaliers
 
 ### Corrections
 - Correction de la quantité d'achat par défaut dans la liste de courses :
   - 1 unité pour les aliments gérés par portion (boîte, unité...)
   - 1000 pour les aliments gérés par masse (grammes, ml...)
+- Correction de l'overflow des valeurs nutritionnelles dans la vue détaillée des aliments d'un repas
 
 ## [0.1.2] - 2024-03-22
 

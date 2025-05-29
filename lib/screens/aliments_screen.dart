@@ -73,13 +73,28 @@ class _AlimentsScreenState extends State<AlimentsScreen> {
   }
 
   Future<void> _ajouterAliment() async {
-    final result = await showDialog<bool>(
-      context: context,
-      builder: (context) => const AlimentDialog(),
-    );
-
-    if (result == true) {
-      _chargerAliments();
+    final result = await AlimentDialog.show(context);
+    
+    if (result != null) {
+      try {
+        await _alimentService.insertAliment(result);
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Aliment ajouté avec succès'),
+          ),
+        );
+        _chargerAliments();
+      } catch (e) {
+        _logger.severe('Erreur lors de l\'ajout de l\'aliment: $e');
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Erreur lors de l\'ajout: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 

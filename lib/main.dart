@@ -128,6 +128,7 @@ class _MainScreenState extends State<MainScreen> {
   List<dynamic> _alimentsEnRupture = [];
   late final List<Widget> _screens;
   final Map<String, bool> _listeCoursesCheckedState = {};
+  final DatabaseService _databaseService = DatabaseService();
 
   int get _itemsRestants => _alimentsEnRupture.where((a) => !(_listeCoursesCheckedState[a.id] ?? false)).length;
   bool get _toutEstCoche => _itemsRestants == 0 && _alimentsEnRupture.isNotEmpty;
@@ -137,6 +138,7 @@ class _MainScreenState extends State<MainScreen> {
     super.initState();
     _screens = [
       DashboardScreen(
+        databaseService: _databaseService,
         onAlimentsEnRuptureChanged: (aliments) {
           Future.microtask(() {
             if (mounted) {
@@ -260,6 +262,7 @@ class _MainScreenState extends State<MainScreen> {
                 setState(() {
                   // Recréer le dashboard pour forcer un rafraîchissement complet
                   _screens[0] = DashboardScreen(
+                    databaseService: _databaseService,
                     onAlimentsEnRuptureChanged: (aliments) {
                       Future.microtask(() {
                         if (mounted) {
@@ -304,6 +307,7 @@ class _MainScreenState extends State<MainScreen> {
                     // Mettre à jour le dashboard et les aliments en une seule fois
                     setState(() {
                       _screens[0] = DashboardScreen(
+                        databaseService: _databaseService,
                         onAlimentsEnRuptureChanged: (aliments) {
                           if (mounted) {
                             setState(() {

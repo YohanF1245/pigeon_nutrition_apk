@@ -272,6 +272,7 @@ class _AlimentDialogState extends State<AlimentDialog> with SingleTickerProvider
                 _unitePortionLabelController.clear();
                 _nombreUniteParLotController.clear();
               }
+              _updateQuantiteAchatParDefaut();
             }),
           ),
           if (_gestionPortion) ...[
@@ -520,6 +521,14 @@ class _AlimentDialogState extends State<AlimentDialog> with SingleTickerProvider
         nombreUniteParLot: _gestionPortion && _nombreUniteParLotController.text.isNotEmpty ? int.parse(_nombreUniteParLotController.text) : null,
       );
       Navigator.pop(context, aliment);
+    }
+  }
+
+  void _updateQuantiteAchatParDefaut() {
+    if (_gestionPortion) {
+      _quantiteAchatParDefautController.text = '1';
+    } else {
+      _quantiteAchatParDefautController.text = '1000';
     }
   }
 } 

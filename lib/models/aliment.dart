@@ -30,7 +30,7 @@ class Aliment {
     required this.quantiteStock,
     this.seuilAlerte,
     this.decrementationJournaliere,
-    this.quantiteAchatParDefaut = 1000,
+    double? quantiteAchatParDefaut,
     this.calories = 0,
     this.proteines = 0,
     this.lipides = 0,
@@ -38,7 +38,7 @@ class Aliment {
     this.poidsUnitaire,
     this.unitePortionLabel,
     this.nombreUniteParLot,
-  });
+  }) : quantiteAchatParDefaut = quantiteAchatParDefaut ?? (unitePortionLabel != null ? 1.0 : 1000.0);
 
   Map<String, dynamic> toMap() {
     return {

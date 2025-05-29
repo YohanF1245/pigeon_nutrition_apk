@@ -47,6 +47,13 @@ et ce projet adhère au [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   - Suppression sécurisée des repas avec confirmation détaillée
   - Avertissement lors de la suppression d'un repas utilisé dans l'agenda
   - Mise à jour automatique de l'agenda lors de la suppression d'un repas
+- Améliorations du graphique des écarts nutritionnels (LineChart) :
+  - Possibilité d'afficher les labels Y (graduations) à gauche **et** à droite du graphique pour une meilleure lisibilité, même lors du scroll horizontal.
+  - Centrage automatique du graphique et meilleure gestion des marges pour éviter que la courbe soit collée aux bords.
+  - Ajout d'un sélecteur de période (7, 14, 30 jours) pour l'affichage de l'historique.
+  - Gestion des jours sans données : les deltas sont affichés à zéro pour éviter les chutes visuelles.
+  - Correction de l'alignement entre les labels Y et la grille du graphique.
+  - Refactoring pour garantir la synchronisation des labels Y avec la grille, quel que soit le scroll.
 
 ### Améliorations
 - Optimisation de la plage horaire de l'agenda (6h-23h)

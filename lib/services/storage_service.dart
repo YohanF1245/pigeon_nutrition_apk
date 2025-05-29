@@ -5,11 +5,14 @@ import '../models/repas.dart';
 import '../models/entrainement.dart';
 import '../models/mesures_corporelles.dart';
 import '../models/parametres_nutritionnels.dart';
+import '../models/jour_repas.dart';
 import 'repas_service.dart';
+import 'jour_repas_service.dart';
 
 class StorageService {
   static final StorageService _instance = StorageService._internal();
   final _repasService = RepasService();
+  final _jourRepasService = JourRepasService();
 
   factory StorageService() {
     return _instance;
@@ -79,7 +82,23 @@ class StorageService {
   }
 
   Future<void> deleteRepas(String id) async {
+    // Supprimer d'abord les jours_repas associés
+    await _jourRepasService.supprimerJoursRepasParRepasId(id);
+    // Puis supprimer le repas
     await _repasService.supprimerRepas(id);
+  }
+
+  // Méthodes pour les jours_repas
+  Future<List<JourRepas>> getJoursRepas({DateTime? date}) async {
+    return await _jourRepasService.getJoursRepas(date: date);
+  }
+
+  Future<void> saveJourRepas(JourRepas jourRepas) async {
+    await _jourRepasService.sauvegarderJourRepas(jourRepas);
+  }
+
+  Future<void> deleteJourRepas(String id) async {
+    await _jourRepasService.supprimerJourRepas(id);
   }
 
   // Méthodes pour les entraînements

@@ -22,8 +22,8 @@ class RepasService {
       CREATE TABLE IF NOT EXISTS repas (
         id TEXT PRIMARY KEY,
         nom TEXT NOT NULL,
-        dateHeure TEXT NOT NULL,
-        nutrimentsCaches TEXT
+        nutrimentsCaches TEXT,
+        createdAt TEXT
       )
     ''');
 
@@ -50,10 +50,10 @@ class RepasService {
         {
           'id': repas.id,
           'nom': repas.nom,
-          'dateHeure': repas.dateHeure.toIso8601String(),
           'nutrimentsCaches': repas.nutrimentsCaches != null 
               ? repas.nutrimentsCaches.toString() 
               : null,
+          'createdAt': repas.createdAt?.toIso8601String(),
         },
         conflictAlgorithm: ConflictAlgorithm.replace,
       );
@@ -82,25 +82,10 @@ class RepasService {
     _logger.info('Repas sauvegardé: ${repas.id}');
   }
 
-  Future<List<Repas>> getRepas({DateTime? date}) async {
+  Future<List<Repas>> getRepas() async {
     final db = await _databaseService.database;
-    
-    String whereClause = '';
-    List<String> whereArgs = [];
-    
-    if (date != null) {
-      final debut = DateTime(date.year, date.month, date.day);
-      final fin = debut.add(const Duration(days: 1));
-      whereClause = 'dateHeure BETWEEN ? AND ?';
-      whereArgs = [debut.toIso8601String(), fin.toIso8601String()];
-    }
 
-    final List<Map<String, dynamic>> repasRows = await db.query(
-      'repas',
-      where: whereClause.isEmpty ? null : whereClause,
-      whereArgs: whereArgs.isEmpty ? null : whereArgs,
-    );
-
+    final List<Map<String, dynamic>> repasRows = await db.query('repas');
     final List<Repas> repas = [];
 
     for (var repasRow in repasRows) {
@@ -118,7 +103,6 @@ class RepasService {
       repas.add(Repas(
         id: repasRow['id'],
         nom: repasRow['nom'],
-        dateHeure: DateTime.parse(repasRow['dateHeure']),
         aliments: aliments,
         nutrimentsCaches: repasRow['nutrimentsCaches'] != null
             ? Map<String, double>.from(
@@ -126,6 +110,9 @@ class RepasService {
                   repasRow['nutrimentsCaches'] as Map,
                 ),
               )
+            : null,
+        createdAt: repasRow['createdAt'] != null
+            ? DateTime.parse(repasRow['createdAt'])
             : null,
       ));
     }
@@ -169,8 +156,10 @@ class RepasService {
       repas.add(Repas(
         id: repasRow['id'],
         nom: repasRow['nom'],
-        dateHeure: DateTime.parse(repasRow['dateHeure']),
         aliments: aliments,
+        createdAt: repasRow['createdAt'] != null
+            ? DateTime.parse(repasRow['createdAt'])
+            : null,
       ));
     }
 

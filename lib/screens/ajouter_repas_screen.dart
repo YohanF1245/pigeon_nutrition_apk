@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import '../models/aliment.dart';
 import '../models/repas.dart';
+import '../models/jour_repas.dart';
 import '../services/aliment_service.dart';
 import '../services/storage_service.dart';
 import 'package:uuid/uuid.dart';
@@ -9,10 +10,12 @@ import '../models/unite_base.dart';
 
 class AjouterRepasScreen extends StatefulWidget {
   final Repas? repasAModifier;
+  final DateTime? dateHeure;
   
   const AjouterRepasScreen({
     super.key,
     this.repasAModifier,
+    this.dateHeure,
   });
 
   @override
@@ -33,7 +36,7 @@ class _AjouterRepasScreenState extends State<AjouterRepasScreen> {
   @override
   void initState() {
     super.initState();
-    _dateHeure = widget.repasAModifier?.dateHeure ?? DateTime.now();
+    _dateHeure = widget.dateHeure ?? DateTime.now();
     _alimentsSelectionnes = widget.repasAModifier?.aliments.fold<Map<String, double>>(
       {},
       (map, repasAliment) {
@@ -98,83 +101,57 @@ class _AjouterRepasScreenState extends State<AjouterRepasScreen> {
     
     if (!mounted) return;
 
-    _quantiteController.clear();
-
-    showDialog<void>(
+    showDialog(
       context: context,
-      builder: (BuildContext dialogContext) {
-        return AlertDialog(
-          title: Text(aliment.nom),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              if (utiliserPortion) ...[
-                Text('Nombre de ${aliment.unitePortionLabel}s :'),
-                TextField(
-                  controller: _quantiteController,
-                  keyboardType: TextInputType.number,
-                  autofocus: true,
-                  decoration: InputDecoration(
-                    hintText: 'Ex: 1',
-                    suffix: Text(aliment.unitePortionLabel!),
-                  ),
-                ),
-              ] else ...[
-                const Text('Quantité (en grammes) :'),
-                TextField(
-                  controller: _quantiteController,
-                  keyboardType: TextInputType.number,
-                  autofocus: true,
-                  decoration: const InputDecoration(
-                    hintText: 'Ex: 100',
-                    suffix: Text('g'),
-                  ),
-                ),
-              ],
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () {
-                Navigator.of(dialogContext).pop();
-              },
-              child: const Text('Annuler'),
-            ),
-            TextButton(
-              onPressed: () {
-                final quantite = double.tryParse(_quantiteController.text);
-                if (quantite != null && quantite > 0) {
-                  if (mounted) {
-                    setState(() {
-                      if (utiliserPortion) {
-                        _alimentsSelectionnes[aliment.id] = quantite * aliment.poidsUnitaire!;
-                      } else {
-                        _alimentsSelectionnes[aliment.id] = quantite;
-                      }
-                    });
-                  }
-                  Navigator.of(dialogContext).pop();
-                }
-              },
-              child: const Text('Valider'),
+      builder: (context) => AlertDialog(
+        title: Text('Quantité de ${aliment.nom}'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (utiliserPortion)
+              Text('1 ${aliment.unitePortionLabel} = ${aliment.poidsUnitaire}g'),
+            TextField(
+              controller: _quantiteController,
+              keyboardType: TextInputType.number,
+              decoration: InputDecoration(
+                labelText: utiliserPortion ? 'Nombre de portions' : 'Quantité en grammes',
+                suffixText: utiliserPortion ? aliment.unitePortionLabel : 'g',
+              ),
+              autofocus: true,
             ),
           ],
-        );
-      },
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Annuler'),
+          ),
+          TextButton(
+            onPressed: () {
+              final quantiteTexte = _quantiteController.text;
+              if (quantiteTexte.isNotEmpty) {
+                final quantite = double.parse(quantiteTexte);
+                setState(() {
+                  _alimentsSelectionnes[aliment.id] = utiliserPortion
+                      ? quantite * (aliment.poidsUnitaire ?? 0)
+                      : quantite;
+                });
+                Navigator.pop(context);
+              }
+            },
+            child: const Text('Ajouter'),
+          ),
+        ],
+      ),
     );
   }
 
-  void _retirerAliment(String alimentId) {
-    setState(() {
-      _alimentsSelectionnes.remove(alimentId);
-    });
-  }
-
-  Future<void> _sauvegarderRepas() async {
+  Future<void> _sauvegarder() async {
     if (_alimentsSelectionnes.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('Veuillez ajouter au moins un aliment'),
+          behavior: SnackBarBehavior.floating,
         ),
       );
       return;
@@ -184,7 +161,6 @@ class _AjouterRepasScreenState extends State<AjouterRepasScreen> {
     try {
       final repas = widget.repasAModifier?.copyWith(
         nom: _titreController.text,
-        dateHeure: _dateHeure,
         aliments: _alimentsSelectionnes.entries
             .map((e) => RepasAliment(
                   alimentId: e.key,
@@ -193,7 +169,6 @@ class _AjouterRepasScreenState extends State<AjouterRepasScreen> {
             .toList(),
       ) ?? Repas(
         nom: _titreController.text,
-        dateHeure: _dateHeure,
         aliments: _alimentsSelectionnes.entries
             .map((e) => RepasAliment(
                   alimentId: e.key,
@@ -203,6 +178,22 @@ class _AjouterRepasScreenState extends State<AjouterRepasScreen> {
       );
 
       await _storageService.saveRepas(repas);
+
+      // Si une date est spécifiée, créer un JourRepas
+      if (widget.dateHeure != null) {
+        final jourRepas = JourRepas(
+          date: DateTime(
+            _dateHeure.year,
+            _dateHeure.month,
+            _dateHeure.day,
+          ),
+          repasId: repas.id,
+          heure: _dateHeure.hour,
+          minute: _dateHeure.minute,
+        );
+        await _storageService.saveJourRepas(jourRepas);
+      }
+
       if (mounted) {
         Navigator.pop(context, true);
       }
@@ -215,56 +206,39 @@ class _AjouterRepasScreenState extends State<AjouterRepasScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Text(widget.repasAModifier != null ? 'Modifier le repas' : 'Nouveau repas'),
+        title: Text(widget.repasAModifier != null ? 'Modifier le repas' : 'Ajouter un repas'),
         actions: [
           IconButton(
-            icon: const Icon(Icons.check),
-            onPressed: _isLoading ? null : _sauvegarderRepas,
+            icon: const Icon(Icons.save),
+            onPressed: _sauvegarder,
           ),
         ],
       ),
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(16.0),
               child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // Champ de titre
-                  Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          const Text(
-                            'Titre du repas',
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: Colors.grey,
-                            ),
-                          ),
-                          TextField(
-                            controller: _titreController,
-                            decoration: const InputDecoration(
-                              border: InputBorder.none,
-                              hintText: 'Entrez un titre',
-                            ),
-                          ),
-                        ],
-                      ),
+                  TextField(
+                    controller: _titreController,
+                    decoration: const InputDecoration(
+                      labelText: 'Nom du repas',
+                      border: OutlineInputBorder(),
                     ),
                   ),
                   const SizedBox(height: 16),
-
+                  
                   // Sélecteur de date et heure
-                  Card(
-                    child: ListTile(
-                      leading: const Icon(Icons.calendar_today),
-                      title: Text(_dateFormat.format(_dateHeure)),
-                      onTap: _selectionnerDateHeure,
+                  if (widget.dateHeure != null)
+                    Card(
+                      child: ListTile(
+                        leading: const Icon(Icons.calendar_today),
+                        title: Text(_dateFormat.format(_dateHeure)),
+                        onTap: _selectionnerDateHeure,
+                      ),
                     ),
-                  ),
                   const SizedBox(height: 16),
 
                   // Liste des aliments sélectionnés
@@ -277,49 +251,50 @@ class _AjouterRepasScreenState extends State<AjouterRepasScreen> {
                       ),
                     ),
                     const SizedBox(height: 8),
-                    Card(
-                      child: Column(
-                        children: _alimentsSelectionnes.entries.map((entry) {
-                          final aliment = _aliments.firstWhere(
-                            (a) => a.id == entry.key,
-                            orElse: () => Aliment(
-                              id: '',
-                              nom: 'Aliment inconnu',
-                              unite: UniteBase.gramme,
-                              prixUnitaire: 0,
-                              devise: '€',
-                              gestionStock: false,
-                              quantiteStock: 0,
-                              calories: 0,
-                              proteines: 0,
-                              lipides: 0,
-                              glucides: 0,
-                            ),
-                          );
-                          
-                          String quantiteAffichee;
-                          if (aliment.unitePortionLabel != null && aliment.poidsUnitaire != null && aliment.poidsUnitaire! > 0) {
-                            final portions = entry.value / aliment.poidsUnitaire!;
-                            quantiteAffichee = '${portions.toStringAsFixed(1)} ${aliment.unitePortionLabel}${portions > 1 ? 's' : ''} (${entry.value.toStringAsFixed(1)}g)';
-                          } else {
-                            quantiteAffichee = '${entry.value.toStringAsFixed(1)}g';
-                          }
+                    ..._alimentsSelectionnes.entries.map((entry) {
+                      final aliment = _aliments.firstWhere(
+                        (a) => a.id == entry.key,
+                        orElse: () => Aliment(
+                          id: '',
+                          nom: 'Aliment inconnu',
+                          unite: UniteBase.gramme,
+                          prixUnitaire: 0,
+                          devise: '€',
+                          gestionStock: false,
+                          quantiteStock: 0,
+                          calories: 0,
+                          proteines: 0,
+                          lipides: 0,
+                          glucides: 0,
+                        ),
+                      );
 
-                          return ListTile(
-                            title: Text(aliment.nom),
-                            subtitle: Text(quantiteAffichee),
-                            trailing: IconButton(
-                              icon: const Icon(Icons.delete),
-                              onPressed: () => _retirerAliment(entry.key),
-                            ),
-                          );
-                        }).toList(),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
+                      String quantiteAffichee;
+                      if (aliment.unitePortionLabel != null && aliment.poidsUnitaire != null && aliment.poidsUnitaire! > 0) {
+                        final portions = entry.value / aliment.poidsUnitaire!;
+                        quantiteAffichee = '${portions.toStringAsFixed(1)} ${aliment.unitePortionLabel}${portions > 1 ? 's' : ''} (${entry.value.toStringAsFixed(1)}g)';
+                      } else {
+                        quantiteAffichee = '${entry.value.toStringAsFixed(1)}g';
+                      }
+
+                      return Card(
+                        child: ListTile(
+                          title: Text(aliment.nom),
+                          subtitle: Text(quantiteAffichee),
+                          trailing: IconButton(
+                            icon: const Icon(Icons.delete),
+                            onPressed: () {
+                              setState(() {
+                                _alimentsSelectionnes.remove(entry.key);
+                              });
+                            },
+                          ),
+                        ),
+                      );
+                    }),
                   ],
 
-                  // Liste des aliments disponibles
+                  const SizedBox(height: 16),
                   const Text(
                     'Ajouter des aliments',
                     style: TextStyle(
@@ -328,26 +303,16 @@ class _AjouterRepasScreenState extends State<AjouterRepasScreen> {
                     ),
                   ),
                   const SizedBox(height: 8),
-                  Card(
-                    child: Column(
-                      children: _aliments.map((aliment) {
-                        final estSelectionne = _alimentsSelectionnes.containsKey(aliment.id);
-                        return ListTile(
-                          title: Text(aliment.nom),
-                          subtitle: Text(
-                            'Stock : ${aliment.getStockDisplay()}',
-                          ),
-                          trailing: IconButton(
-                            icon: Icon(
-                              estSelectionne ? Icons.edit : Icons.add,
-                              color: estSelectionne ? Colors.orange : null,
-                            ),
-                            onPressed: () => _ajouterAliment(aliment),
-                          ),
-                        );
-                      }).toList(),
+                  ...(_aliments.map((aliment) => Card(
+                    child: ListTile(
+                      title: Text(aliment.nom),
+                      subtitle: Text('${aliment.calories.toStringAsFixed(0)} kcal / 100g'),
+                      trailing: IconButton(
+                        icon: const Icon(Icons.add),
+                        onPressed: () => _ajouterAliment(aliment),
+                      ),
                     ),
-                  ),
+                  ))),
                 ],
               ),
             ),

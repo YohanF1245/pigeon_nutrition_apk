@@ -28,17 +28,19 @@ class RepasAliment {
 class Repas {
   final String id;
   String nom;
-  DateTime dateHeure;
   List<RepasAliment> aliments;
   Map<String, double>? nutrimentsCaches;
+  DateTime? createdAt;
 
   Repas({
     String? id,
     required this.nom,
-    required this.dateHeure,
     required this.aliments,
     this.nutrimentsCaches,
-  }) : id = id ?? const Uuid().v4();
+    DateTime? createdAt,
+  }) : 
+    id = id ?? const Uuid().v4(),
+    createdAt = createdAt ?? DateTime.now();
 
   // Méthodes de calcul des nutriments
   Future<Map<String, double>> calculerNutriments(List<Aliment> alimentsDisponibles) async {
@@ -77,9 +79,9 @@ class Repas {
     return {
       'id': id,
       'nom': nom,
-      'dateHeure': dateHeure.toIso8601String(),
       'aliments': aliments.map((a) => a.toMap()).toList(),
       'nutrimentsCaches': nutrimentsCaches,
+      'createdAt': createdAt?.toIso8601String(),
     };
   }
 
@@ -87,28 +89,27 @@ class Repas {
     return Repas(
       id: map['id'],
       nom: map['nom'],
-      dateHeure: DateTime.parse(map['dateHeure']),
       aliments: (map['aliments'] as List)
           .map((a) => RepasAliment.fromMap(a as Map<String, dynamic>))
           .toList(),
       nutrimentsCaches: map['nutrimentsCaches'] != null
           ? Map<String, double>.from(map['nutrimentsCaches'])
           : null,
+      createdAt: map['createdAt'] != null ? DateTime.parse(map['createdAt']) : null,
     );
   }
 
   // Clone le repas avec de nouvelles valeurs optionnelles
   Repas copyWith({
     String? nom,
-    DateTime? dateHeure,
     List<RepasAliment>? aliments,
   }) {
     return Repas(
-      id: id, // On garde le même ID
+      id: id,
       nom: nom ?? this.nom,
-      dateHeure: dateHeure ?? this.dateHeure,
       aliments: aliments ?? List.from(this.aliments),
       nutrimentsCaches: null, // On reset le cache car les données peuvent avoir changé
+      createdAt: createdAt,
     );
   }
 } 

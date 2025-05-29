@@ -25,6 +25,19 @@ class _DashboardScreenState extends State<DashboardScreen> {
   final AlimentService _alimentService = AlimentService();
   final StorageService _storageService = StorageService();
   final _refreshController = StreamController<void>.broadcast();
+  
+  List<Aliment>? _aliments;
+  List<dynamic>? _alimentsEnRupture;
+  ParametresNutritionnels? _parametres;
+  Map<String, double>? _macrosJour;
+  bool _isLoading = true;
+  String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadData();
+  }
 
   @override
   void dispose() {
@@ -32,12 +45,44 @@ class _DashboardScreenState extends State<DashboardScreen> {
     super.dispose();
   }
 
-  void refresh() {
-    if (mounted) {
+  Future<void> _loadData() async {
+    if (!mounted) return;
+    
+    setState(() {
+      _isLoading = true;
+      _error = null;
+    });
+
+    try {
+      final aliments = await _alimentService.getAllAliments();
+      final alimentsEnRupture = await _alimentService.getAlimentsEnRupture();
+      final parametres = await _storageService.getParametresNutritionnels();
+      final macrosJour = await _calculerMacrosJour();
+
+      if (!mounted) return;
+
       setState(() {
-        _refreshController.add(null);
+        _aliments = aliments;
+        _alimentsEnRupture = alimentsEnRupture;
+        _parametres = parametres;
+        _macrosJour = macrosJour;
+        _isLoading = false;
+      });
+
+      // Notifier le parent du changement des aliments en rupture
+      widget.onAlimentsEnRuptureChanged?.call(alimentsEnRupture);
+    } catch (e) {
+      if (!mounted) return;
+      
+      setState(() {
+        _error = e.toString();
+        _isLoading = false;
       });
     }
+  }
+
+  void refresh() {
+    _loadData();
   }
 
   void _afficherListeCourses(BuildContext context, List<Aliment> alimentsEnRupture) {
@@ -78,191 +123,101 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Future<Map<String, double>> _calculerMacrosJour() async {
-    final repas = await _storageService.getRepas();
-    final aujourdhui = DateTime.now();
-    final repasAujourdhui = repas.where((r) => 
-      r.dateHeure.year == aujourdhui.year && 
-      r.dateHeure.month == aujourdhui.month && 
-      r.dateHeure.day == aujourdhui.day
-    ).toList();
+    try {
+      final joursRepas = await _storageService.getJoursRepas(date: DateTime.now());
+      final repas = await _storageService.getRepas();
+      final repasAujourdhui = joursRepas.map((jr) => 
+        repas.firstWhere((r) => r.id == jr.repasId)
+      ).toList();
 
-    double calories = 0;
-    double proteines = 0;
-    double lipides = 0;
-    double glucides = 0;
+      double calories = 0;
+      double proteines = 0;
+      double lipides = 0;
+      double glucides = 0;
 
-    final aliments = await _alimentService.getAllAliments();
+      final aliments = await _alimentService.getAllAliments();
 
-    for (final repas in repasAujourdhui) {
-      final nutriments = await repas.calculerNutriments(aliments);
-      calories += nutriments['calories'] ?? 0;
-      proteines += nutriments['proteines'] ?? 0;
-      lipides += nutriments['lipides'] ?? 0;
-      glucides += nutriments['glucides'] ?? 0;
+      for (final repas in repasAujourdhui) {
+        final nutriments = await repas.calculerNutriments(aliments);
+        calories += nutriments['calories'] ?? 0;
+        proteines += nutriments['proteines'] ?? 0;
+        lipides += nutriments['lipides'] ?? 0;
+        glucides += nutriments['glucides'] ?? 0;
+      }
+
+      return {
+        'calories': calories,
+        'proteines': proteines,
+        'lipides': lipides,
+        'glucides': glucides,
+      };
+    } catch (e) {
+      debugPrint('Erreur lors du calcul des macros: $e');
+      return {
+        'calories': 0,
+        'proteines': 0,
+        'lipides': 0,
+        'glucides': 0,
+      };
     }
-
-    return {
-      'calories': calories,
-      'proteines': proteines,
-      'lipides': lipides,
-      'glucides': glucides,
-    };
   }
 
   @override
   Widget build(BuildContext context) {
-    return FutureBuilder<List<dynamic>>(
-      future: Future.wait([
-        _alimentService.getAllAliments(),
-        _alimentService.getAlimentsEnRupture(),
-        _storageService.getParametresNutritionnels(),
-        _calculerMacrosJour(),
-      ]),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        }
+    if (_isLoading) {
+      return const Center(child: CircularProgressIndicator());
+    }
 
-        if (snapshot.hasError) {
-          return Center(
-            child: Text('Erreur: ${snapshot.error}'),
-          );
-        }
+    if (_error != null) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text('Erreur: $_error'),
+            ElevatedButton(
+              onPressed: _loadData,
+              child: const Text('Réessayer'),
+            ),
+          ],
+        ),
+      );
+    }
 
-        final aliments = snapshot.data?[0] ?? [];
-        final alimentsEnRupture = snapshot.data?[1] ?? [];
-        final parametres = snapshot.data?[2] as ParametresNutritionnels?;
-        final macrosJour = snapshot.data?[3] as Map<String, double>? ?? {
-          'calories': 0.0,
-          'proteines': 0.0,
-          'lipides': 0.0,
-          'glucides': 0.0,
-        };
+    final macros = _parametres != null ? {
+      'Calories': {
+        'actuel': _macrosJour?['calories'] ?? 0.0,
+        'objectif': _parametres!.caloriesQuotidiennes,
+        'unite': 'kcal'
+      },
+      'Protéines': {
+        'actuel': _macrosJour?['proteines'] ?? 0.0,
+        'objectif': _parametres!.objectifProteinesGrammes,
+        'unite': 'g'
+      },
+      'Lipides': {
+        'actuel': _macrosJour?['lipides'] ?? 0.0,
+        'objectif': _parametres!.objectifLipidesGrammes,
+        'unite': 'g'
+      },
+      'Glucides': {
+        'actuel': _macrosJour?['glucides'] ?? 0.0,
+        'objectif': _parametres!.objectifGlucidesGrammes,
+        'unite': 'g'
+      },
+    } : null;
 
-        // Notifier le parent du changement des aliments en rupture de façon asynchrone
-        Future.microtask(() {
-          widget.onAlimentsEnRuptureChanged?.call(alimentsEnRupture);
-        });
-
-        final macros = parametres != null ? {
-          'Calories': {
-            'actuel': macrosJour['calories'] ?? 0.0,
-            'objectif': parametres.caloriesQuotidiennes,
-            'unite': 'kcal'
-          },
-          'Protéines': {
-            'actuel': macrosJour['proteines'] ?? 0.0,
-            'objectif': parametres.objectifProteinesGrammes,
-            'unite': 'g'
-          },
-          'Lipides': {
-            'actuel': macrosJour['lipides'] ?? 0.0,
-            'objectif': parametres.objectifLipidesGrammes,
-            'unite': 'g'
-          },
-          'Glucides': {
-            'actuel': macrosJour['glucides'] ?? 0.0,
-            'objectif': parametres.objectifGlucidesGrammes,
-            'unite': 'g'
-          },
-        } : null;
-
-        return Scaffold(
-          body: SingleChildScrollView(
-            padding: const EdgeInsets.all(16.0),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                if (macros != null) ...[
-                  // Section Macronutriments
-                  const Text(
-                    'Macronutriments du Jour',
-                    style: TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Column(
-                        children: macros.entries.map((entry) {
-                          final nom = entry.key;
-                          final actuel = entry.value['actuel'] as double;
-                          final objectif = entry.value['objectif'] as double;
-                          final unite = entry.value['unite'] as String;
-                          final progress = (actuel / objectif).clamp(0.0, 1.0);
-
-                          return Column(
-                            children: [
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                children: [
-                                  Text(nom),
-                                  Text('${actuel.toStringAsFixed(1)}/${objectif.toStringAsFixed(1)} $unite'),
-                                ],
-                              ),
-                              const SizedBox(height: 4),
-                              LinearProgressIndicator(
-                                value: progress,
-                                backgroundColor: Colors.grey[200],
-                                color: _getProgressColor(progress),
-                              ),
-                              const SizedBox(height: 12),
-                            ],
-                          );
-                        }).toList(),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                ] else ...[
-                  Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(16.0),
-                      child: Column(
-                        children: [
-                          const Icon(
-                            Icons.settings,
-                            size: 48,
-                            color: Colors.grey,
-                          ),
-                          const SizedBox(height: 16),
-                          const Text(
-                            'Paramètres non configurés',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          const SizedBox(height: 8),
-                          const Text(
-                            'Pour voir vos objectifs nutritionnels, veuillez configurer vos paramètres personnels.',
-                            textAlign: TextAlign.center,
-                          ),
-                          const SizedBox(height: 16),
-                          ElevatedButton(
-                            onPressed: () async {
-                              final result = await Navigator.push<bool>(
-                                context,
-                                MaterialPageRoute(builder: (context) => const ParametresNutritionnelsScreen()),
-                              );
-                              if (result == true) {
-                                setState(() {});
-                              }
-                            },
-                            child: const Text('Configurer les paramètres'),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 24),
-                ],
-                // Section Résumé
+    return Scaffold(
+      body: RefreshIndicator(
+        onRefresh: _loadData,
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              if (macros != null) ...[
                 const Text(
-                  'Résumé',
+                  'Macronutriments du Jour',
                   style: TextStyle(
                     fontSize: 20,
                     fontWeight: FontWeight.bold,
@@ -272,47 +227,131 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 Card(
                   child: Padding(
                     padding: const EdgeInsets.all(16.0),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceAround,
+                    child: Column(
+                      children: macros.entries.map((entry) {
+                        final nom = entry.key;
+                        final actuel = entry.value['actuel'] as double;
+                        final objectif = entry.value['objectif'] as double;
+                        final unite = entry.value['unite'] as String;
+                        final progress = (actuel / objectif).clamp(0.0, 1.0);
+
+                        return Column(
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(nom),
+                                Text('${actuel.toStringAsFixed(1)}/${objectif.toStringAsFixed(1)} $unite'),
+                              ],
+                            ),
+                            const SizedBox(height: 4),
+                            LinearProgressIndicator(
+                              value: progress,
+                              backgroundColor: Colors.grey[200],
+                              color: _getProgressColor(progress),
+                            ),
+                            const SizedBox(height: 12),
+                          ],
+                        );
+                      }).toList(),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 24),
+              ] else ...[
+                Card(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Column(
                       children: [
-                        Column(
-                          children: [
-                            const Icon(Icons.food_bank, size: 32),
-                            const SizedBox(height: 8),
-                            Text(
-                              '${aliments.length}',
-                              style: const TextStyle(
-                                fontSize: 24,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            const Text('Aliments'),
-                          ],
+                        const Icon(
+                          Icons.settings,
+                          size: 48,
+                          color: Colors.grey,
                         ),
-                        Column(
-                          children: [
-                            const Icon(Icons.warning, size: 32, color: Colors.orange),
-                            const SizedBox(height: 8),
-                            Text(
-                              '${alimentsEnRupture.length}',
-                              style: const TextStyle(
-                                fontSize: 24,
-                                fontWeight: FontWeight.bold,
-                                color: Colors.orange,
-                              ),
-                            ),
-                            const Text('Alertes'),
-                          ],
+                        const SizedBox(height: 16),
+                        const Text(
+                          'Paramètres non configurés',
+                          style: TextStyle(
+                            fontSize: 18,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        const Text(
+                          'Pour voir vos objectifs nutritionnels, veuillez configurer vos paramètres personnels.',
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 16),
+                        ElevatedButton(
+                          onPressed: () async {
+                            final result = await Navigator.push<bool>(
+                              context,
+                              MaterialPageRoute(builder: (context) => const ParametresNutritionnelsScreen()),
+                            );
+                            if (result == true) {
+                              _loadData();
+                            }
+                          },
+                          child: const Text('Configurer les paramètres'),
                         ),
                       ],
                     ),
                   ),
                 ),
+                const SizedBox(height: 24),
               ],
-            ),
+              const Text(
+                'Résumé',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Card(
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                    children: [
+                      Column(
+                        children: [
+                          const Icon(Icons.food_bank, size: 32),
+                          const SizedBox(height: 8),
+                          Text(
+                            '${_aliments?.length ?? 0}',
+                            style: const TextStyle(
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                          const Text('Aliments'),
+                        ],
+                      ),
+                      Column(
+                        children: [
+                          const Icon(Icons.warning, size: 32, color: Colors.orange),
+                          const SizedBox(height: 8),
+                          Text(
+                            '${_alimentsEnRupture?.length ?? 0}',
+                            style: const TextStyle(
+                              fontSize: 24,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.orange,
+                            ),
+                          ),
+                          const Text('Alertes'),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
           ),
-        );
-      },
+        ),
+      ),
     );
   }
 

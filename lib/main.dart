@@ -18,15 +18,6 @@ import 'services/repas_service.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   
-  // Initialisation des données de localisation
-  await initializeDateFormatting('fr_FR', null);
-  
-  // Initialisation des services
-  final databaseService = DatabaseService();
-  final repasService = RepasService();
-  await databaseService.initializeDatabase();
-  await repasService.initialiserTable();
-  
   // Configuration du logger
   Logger.root.level = Level.ALL;
   Logger.root.onRecord.listen((record) {
@@ -34,15 +25,24 @@ void main() async {
   });
   
   final logger = Logger('main');
+  
+  // Lancer l'application immédiatement
+  runApp(const MyApp());
+  
+  // Initialiser les services en arrière-plan
   try {
-    logger.info('Démarrage de l\'application...');
+    await Future.wait([
+      initializeDateFormatting('fr_FR', null),
+      DatabaseService().initializeDatabase(),
+    ]);
     
-    // Initialiser le service en arrière-plan
+    // Initialiser les autres services de manière séquentielle pour éviter les conflits
+    await RepasService().initialiserTable();
     await BackgroundService.initialize();
     
-    runApp(const MyApp());
+    logger.info('Initialisation des services terminée');
   } catch (e) {
-    logger.severe('Erreur lors du démarrage de l\'application: $e');
+    logger.severe('Erreur lors de l\'initialisation des services: $e');
   }
 }
 
@@ -71,13 +71,38 @@ class SplashScreenWrapper extends StatefulWidget {
 }
 
 class _SplashScreenWrapperState extends State<SplashScreenWrapper> {
+  bool _isInitialized = false;
+
   @override
   void initState() {
     super.initState();
-    _navigateToMain();
+    _checkInitialization();
   }
 
-  _navigateToMain() async {
+  Future<void> _checkInitialization() async {
+    try {
+      // Vérifier que la base de données est initialisée
+      final db = await DatabaseService().database;
+      if (!mounted) return;
+      
+      setState(() {
+        _isInitialized = true;
+      });
+      
+      _navigateToMain();
+    } catch (e) {
+      debugPrint('Erreur lors de la vérification de l\'initialisation: $e');
+      // Réessayer dans 500ms
+      await Future.delayed(const Duration(milliseconds: 500));
+      if (mounted) {
+        _checkInitialization();
+      }
+    }
+  }
+
+  Future<void> _navigateToMain() async {
+    if (!_isInitialized) return;
+    
     await Future.delayed(const Duration(milliseconds: 1500));
     if (mounted) {
       Navigator.of(context).pushReplacementNamed('/main');

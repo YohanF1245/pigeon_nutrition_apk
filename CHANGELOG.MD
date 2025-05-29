@@ -20,6 +20,12 @@ et ce projet adhère au [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   - Détails nutritionnels complets par repas
 
 ### Ajouté
+- Optimisation majeure des performances de la base de données :
+  - Réduction des temps de verrouillage lors des opérations sur l'agenda
+  - Utilisation de transactions optimisées pour les mises à jour multiples
+  - Regroupement des opérations de mise à jour du stock en lots (batch)
+  - Déplacement des lectures hors des transactions pour réduire les temps de verrouillage
+  - Élimination des appels imbriqués aux services dans les transactions
 - Suppression sécurisée des aliments avec confirmation détaillée :
   - Affichage des valeurs nutritionnelles de l'aliment
   - Liste des repas impactés par la suppression

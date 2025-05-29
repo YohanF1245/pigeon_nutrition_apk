@@ -43,6 +43,7 @@ dependencies:
   share_plus: ^11.0.0
   file_picker: ^10.1.9
   path_provider: ^2.1.5
+  fl_chart: ^0.66.2
 
 dev_dependencies:
   flutter_test:

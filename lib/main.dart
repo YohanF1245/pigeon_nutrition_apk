@@ -126,7 +126,7 @@ class _MainScreenState extends State<MainScreen> {
   int _selectedIndex = 0;
   bool _showListeCourses = false;
   List<dynamic> _alimentsEnRupture = [];
-  late final List<Widget> _screens;
+  late List<Widget> _screens;
   final Map<String, bool> _listeCoursesCheckedState = {};
   final DatabaseService _databaseService = DatabaseService();
 

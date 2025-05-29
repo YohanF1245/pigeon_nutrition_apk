@@ -209,8 +209,9 @@ class _RepasScreenState extends State<RepasScreen> {
                 final repasParHeure = snapshot.data ?? {};
                 
                 return ListView.builder(
-                  itemCount: 24,
-                  itemBuilder: (context, hour) {
+                  itemCount: 18, // De 6h à 23h = 18 heures
+                  itemBuilder: (context, index) {
+                    final hour = index + 6; // Commencer à 6h
                     final joursRepas = repasParHeure[hour] ?? [];
 
                     return Container(
@@ -229,7 +230,7 @@ class _RepasScreenState extends State<RepasScreen> {
                           SizedBox(
                             width: 50,
                             child: Text(
-                              '$hour:00',
+                              '${hour.toString().padLeft(2, '0')}:00',
                               textAlign: TextAlign.center,
                             ),
                           ),

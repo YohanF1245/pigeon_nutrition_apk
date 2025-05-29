@@ -20,11 +20,18 @@ et ce projet adhère au [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   - Détails nutritionnels complets par repas
 
 ### Ajouté
-- Suppression sécurisée des aliments avec confirmation
+- Suppression sécurisée des aliments avec confirmation détaillée :
+  - Affichage des valeurs nutritionnelles de l'aliment
+  - Liste des repas impactés par la suppression
+  - Avertissement visuel sur l'impact de la suppression
+- Confirmation détaillée lors de la suppression d'un repas de l'agenda avec affichage de l'impact nutritionnel
 - Avertissement lors de la suppression d'un aliment utilisé dans des repas
 - Suppression automatique des repas liés à un aliment supprimé
 
 ### Améliorations
+- Optimisation de l'agenda :
+  - Plage horaire réduite de 6h à 23h pour une meilleure lisibilité
+  - Format d'affichage des heures uniformisé (ex: "06:00" au lieu de "6:00")
 - Amélioration de l'icône d'ajustement du stock pour plus de clarté
 - Amélioration de la visualisation et de l'édition des repas
   - Ajout des boutons d'édition et de suppression dans la vue détaillée
@@ -76,4 +83,28 @@ et ce projet adhère au [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - Gestion des stocks
 - Calcul des valeurs nutritionnelles
 - Interface utilisateur de base
+
+## [Non publié]
+
+### Ajouté
+- Nouveau modèle `JourRepas` pour gérer les repas journaliers
+- Service `JourRepasService` pour la gestion des repas journaliers
+- Icône d'œil dans l'interface pour indiquer l'interactivité des repas
+
+### Modifié
+- Amélioration de l'interface de gestion des repas journaliers
+- Optimisation de l'initialisation de la base de données
+- Optimisation du service d'arrière-plan
+- Meilleure gestion des aliments supprimés dans l'affichage des repas
+
+### Corrigé
+- Correction des problèmes de chargement infini de l'application
+- Correction de l'affichage des détails des repas
+- Correction de la superposition des repas dans l'agenda
+- Amélioration de la réactivité des interactions tactiles
+
+## [1.0.0] - 2024-01-XX
+
+### Initial Release
+- Première version de l'application
 

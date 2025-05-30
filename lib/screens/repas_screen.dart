@@ -87,14 +87,14 @@ class _RepasScreenState extends State<RepasScreen> {
           return const Center(child: CircularProgressIndicator());
         }
 
-        final nutriments = snapshot.data?[0] as Map<String, double>? ?? {
+        final nutriments = (snapshot.data?[0] as Map<String, double>?) ?? {
           'calories': 0.0,
           'proteines': 0.0,
           'lipides': 0.0,
           'glucides': 0.0,
         };
 
-        final parametres = snapshot.data?[1];
+        final parametres = snapshot.data?[1] as ParametresNutritionnels?;
         final objectifs = {
           'calories': parametres?.caloriesQuotidiennes ?? 2000.0,
           'proteines': parametres?.objectifProteinesGrammes ?? 150.0,
@@ -102,17 +102,20 @@ class _RepasScreenState extends State<RepasScreen> {
           'glucides': parametres?.objectifGlucidesGrammes ?? 250.0,
         };
 
-        return Card(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 4.0, horizontal: 8.0),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                _buildNutrimentBox('Calories', nutriments['calories']!, objectifs['calories']!, 'kcal', Colors.blue),
-                _buildNutrimentBox('Protéines', nutriments['proteines']!, objectifs['proteines']!, 'g', Colors.red),
-                _buildNutrimentBox('Lipides', nutriments['lipides']!, objectifs['lipides']!, 'g', Colors.orange),
-                _buildNutrimentBox('Glucides', nutriments['glucides']!, objectifs['glucides']!, 'g', Colors.green),
-              ],
+        return GestureDetector(
+          onTap: () => _afficherTableauNutriments(context, nutriments, objectifs),
+          child: Card(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(vertical: 4.0, horizontal: 8.0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  _buildNutrimentBox('Calories', nutriments['calories']!, objectifs['calories']!, 'kcal', Colors.blue),
+                  _buildNutrimentBox('Protéines', nutriments['proteines']!, objectifs['proteines']!, 'g', Colors.red),
+                  _buildNutrimentBox('Lipides', nutriments['lipides']!, objectifs['lipides']!, 'g', Colors.orange),
+                  _buildNutrimentBox('Glucides', nutriments['glucides']!, objectifs['glucides']!, 'g', Colors.green),
+                ],
+              ),
             ),
           ),
         );
@@ -695,6 +698,11 @@ class _RepasScreenState extends State<RepasScreen> {
   }
 
   Future<Map<String, double>> _calculerNutrimentsJour(DateTime date) async {
+    // On crée une date de début à minuit
+    final debut = DateTime(date.year, date.month, date.day);
+    // On crée une date de fin à minuit le jour suivant
+    final fin = DateTime(date.year, date.month, date.day + 1);
+    
     final joursRepas = await _storageService.getJoursRepas(date: date);
     final repas = await _storageService.getRepas();
     final repasJour = joursRepas.map((jr) => 
@@ -1056,5 +1064,221 @@ class _RepasScreenState extends State<RepasScreen> {
     if (result == true && mounted) {
       setState(() {});
     }
+  }
+
+  void _afficherTableauNutriments(BuildContext context, Map<String, double> nutriments, Map<String, double> objectifs) async {
+    final joursRepas = await _storageService.getJoursRepas(date: _selectedDate);
+    final repas = await _storageService.getRepas();
+    final aliments = await _alimentService.getAllAliments();
+    
+    final repasDuJour = joursRepas.map((jr) => 
+      repas.firstWhere((r) => r.id == jr.repasId)
+    ).toList();
+
+    // Calculer les nutriments pour chaque repas
+    final List<Map<String, double>> nutrimentsRepas = [];
+    for (var repas in repasDuJour) {
+      final nutr = await repas.calculerNutriments(aliments);
+      nutrimentsRepas.add(nutr);
+    }
+
+    if (!context.mounted) return;
+
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        child: Container(
+          width: MediaQuery.of(context).size.width * 0.9,
+          height: MediaQuery.of(context).size.height * 0.8,
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  const Text(
+                    'Détail des repas',
+                    style: TextStyle(
+                      fontSize: 20,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    onPressed: () => Navigator.of(context).pop(),
+                  ),
+                ],
+              ),
+              const Divider(),
+              Text(
+                'Date : ${DateFormat('EEEE dd MMMM yyyy', 'fr_FR').format(_selectedDate)}',
+                style: const TextStyle(
+                  fontSize: 16,
+                  color: Colors.grey,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Expanded(
+                child: SingleChildScrollView(
+                  child: Table(
+                    border: TableBorder.all(color: Colors.grey),
+                    columnWidths: const {
+                      0: FlexColumnWidth(2), // Nom du repas
+                      1: FlexColumnWidth(1), // Calories
+                      2: FlexColumnWidth(1), // Protéines
+                      3: FlexColumnWidth(1), // Lipides
+                      4: FlexColumnWidth(1), // Glucides
+                    },
+                    children: [
+                      // En-tête
+                      TableRow(
+                        decoration: BoxDecoration(color: Colors.grey[200]),
+                        children: const [
+                          Padding(
+                            padding: EdgeInsets.all(8.0),
+                            child: Text('Repas', style: TextStyle(fontWeight: FontWeight.bold)),
+                          ),
+                          Padding(
+                            padding: EdgeInsets.all(8.0),
+                            child: Text('Calories', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.blue)),
+                          ),
+                          Padding(
+                            padding: EdgeInsets.all(8.0),
+                            child: Text('Protéines', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.red)),
+                          ),
+                          Padding(
+                            padding: EdgeInsets.all(8.0),
+                            child: Text('Lipides', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.orange)),
+                          ),
+                          Padding(
+                            padding: EdgeInsets.all(8.0),
+                            child: Text('Glucides', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.green)),
+                          ),
+                        ],
+                      ),
+                      // Lignes des repas
+                      ...List.generate(repasDuJour.length, (index) {
+                        final repas = repasDuJour[index];
+                        final nutr = nutrimentsRepas[index];
+                        return TableRow(
+                          children: [
+                            Padding(
+                              padding: const EdgeInsets.all(8.0),
+                              child: Text(repas.nom),
+                            ),
+                            Padding(
+                              padding: const EdgeInsets.all(8.0),
+                              child: Text('${nutr['calories']?.toStringAsFixed(0)} kcal', style: const TextStyle(color: Colors.blue)),
+                            ),
+                            Padding(
+                              padding: const EdgeInsets.all(8.0),
+                              child: Text('${nutr['proteines']?.toStringAsFixed(1)}g', style: const TextStyle(color: Colors.red)),
+                            ),
+                            Padding(
+                              padding: const EdgeInsets.all(8.0),
+                              child: Text('${nutr['lipides']?.toStringAsFixed(1)}g', style: const TextStyle(color: Colors.orange)),
+                            ),
+                            Padding(
+                              padding: const EdgeInsets.all(8.0),
+                              child: Text('${nutr['glucides']?.toStringAsFixed(1)}g', style: const TextStyle(color: Colors.green)),
+                            ),
+                          ],
+                        );
+                      }),
+                      // Ligne de séparation
+                      const TableRow(
+                        children: [
+                          Divider(),
+                          Divider(),
+                          Divider(),
+                          Divider(),
+                          Divider(),
+                        ],
+                      ),
+                      // Ligne des totaux
+                      TableRow(
+                        decoration: BoxDecoration(color: Colors.grey[100]),
+                        children: [
+                          const Padding(
+                            padding: EdgeInsets.all(8.0),
+                            child: Text('TOTAL', style: TextStyle(fontWeight: FontWeight.bold)),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.all(8.0),
+                            child: Text(
+                              '${nutriments['calories']?.toStringAsFixed(0)} kcal',
+                              style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.blue),
+                            ),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.all(8.0),
+                            child: Text(
+                              '${nutriments['proteines']?.toStringAsFixed(1)}g',
+                              style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.red),
+                            ),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.all(8.0),
+                            child: Text(
+                              '${nutriments['lipides']?.toStringAsFixed(1)}g',
+                              style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.orange),
+                            ),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.all(8.0),
+                            child: Text(
+                              '${nutriments['glucides']?.toStringAsFixed(1)}g',
+                              style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.green),
+                            ),
+                          ),
+                        ],
+                      ),
+                      // Ligne des objectifs
+                      TableRow(
+                        decoration: BoxDecoration(color: Colors.grey[50]),
+                        children: [
+                          const Padding(
+                            padding: EdgeInsets.all(8.0),
+                            child: Text('OBJECTIF', style: TextStyle(fontWeight: FontWeight.bold)),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.all(8.0),
+                            child: Text(
+                              '${objectifs['calories']?.toStringAsFixed(0)} kcal',
+                              style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.blue),
+                            ),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.all(8.0),
+                            child: Text(
+                              '${objectifs['proteines']?.toStringAsFixed(1)}g',
+                              style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.red),
+                            ),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.all(8.0),
+                            child: Text(
+                              '${objectifs['lipides']?.toStringAsFixed(1)}g',
+                              style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.orange),
+                            ),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.all(8.0),
+                            child: Text(
+                              '${objectifs['glucides']?.toStringAsFixed(1)}g',
+                              style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.green),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 } 

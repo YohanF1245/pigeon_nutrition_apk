@@ -328,53 +328,105 @@ class _AlimentDialogState extends State<AlimentDialog> with SingleTickerProvider
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Valeurs nutritionnelles pour 100${_unite.symbole}',
-                style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                      color: AppTheme.primaryBlue,
-                      fontWeight: FontWeight.bold,
+          Text(
+            'Valeurs nutritionnelles pour 100${_unite.symbole}',
+            style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                  color: AppTheme.primaryBlue,
+                  fontWeight: FontWeight.bold,
+                ),
+          ),
+          const SizedBox(height: 16),
+          Card(
+            elevation: 2,
+            child: InkWell(
+              onTap: () async {
+                final result = await Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => BarcodeScanner(
+                      onBarcodeDetected: (barcode) async {
+                        final product = await _openFoodFactsService.getProductByBarcode(barcode);
+                        if (product != null) {
+                          setState(() {
+                            _nomController.text = product['name'];
+                            _caloriesController.text = product['nutriments']['energy-kcal_100g'].toString();
+                            _proteinesController.text = product['nutriments']['proteins_100g'].toString();
+                            _lipidesController.text = product['nutriments']['fat_100g'].toString();
+                            _glucidesController.text = product['nutriments']['carbohydrates_100g'].toString();
+                          });
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Données nutritionnelles récupérées avec succès'),
+                            ),
+                          );
+                        } else {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text('Produit non trouvé dans la base de données'),
+                            ),
+                          );
+                        }
+                      },
                     ),
-              ),
-              IconButton(
-                icon: const Icon(Icons.qr_code_scanner),
-                onPressed: () async {
-                  final result = await Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => BarcodeScanner(
-                        onBarcodeDetected: (barcode) async {
-                          final product = await _openFoodFactsService.getProductByBarcode(barcode);
-                          if (product != null) {
-                            setState(() {
-                              _nomController.text = product['name'];
-                              _caloriesController.text = product['nutriments']['energy-kcal_100g'].toString();
-                              _proteinesController.text = product['nutriments']['proteins_100g'].toString();
-                              _lipidesController.text = product['nutriments']['fat_100g'].toString();
-                              _glucidesController.text = product['nutriments']['carbohydrates_100g'].toString();
-                            });
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Données nutritionnelles récupérées avec succès'),
-                              ),
-                            );
-                          } else {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text('Produit non trouvé dans la base de données'),
-                              ),
-                            );
-                          }
-                        },
+                  ),
+                );
+              },
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: AppTheme.primaryBlue.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Icon(
+                        Icons.qr_code_scanner,
+                        color: AppTheme.primaryBlue,
+                        size: 32,
                       ),
                     ),
-                  );
-                },
-                tooltip: 'Scanner un code-barres',
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Scanner un code-barres',
+                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                  color: AppTheme.primaryBlue,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            'Récupérer automatiquement les informations nutritionnelles',
+                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                                  color: Colors.grey[600],
+                                ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const Icon(
+                      Icons.arrow_forward_ios,
+                      color: AppTheme.primaryBlue,
+                    ),
+                  ],
+                ),
               ),
-            ],
+            ),
+          ),
+          const SizedBox(height: 24),
+          const Divider(),
+          const SizedBox(height: 16),
+          Text(
+            'Valeurs manuelles',
+            style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                  color: Colors.grey[700],
+                  fontWeight: FontWeight.bold,
+                ),
           ),
           const SizedBox(height: 16),
           Row(

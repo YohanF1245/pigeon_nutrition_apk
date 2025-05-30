@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
+import 'package:mobile_scanner/mobile_scanner.dart';
 import '../models/aliment.dart';
 import '../models/unite_base.dart';
 import '../theme/app_theme.dart';
 import '../services/open_food_facts_service.dart';
-import 'barcode_scanner.dart';
 
 class AlimentDialog extends StatefulWidget {
   final Aliment? aliment;
@@ -45,6 +45,11 @@ class _AlimentDialogState extends State<AlimentDialog> with SingleTickerProvider
   bool _gestionPortion = false;
   UniteBase _unite = UniteBase.gramme;
   final _openFoodFactsService = OpenFoodFactsService();
+  String? _scanError;
+  String? _scannedBarcode;
+  String? _scanSuccess;
+  DateTime? _lastScanTime;
+  static const _scanCooldown = Duration(seconds: 3);
 
   @override
   void initState() {
@@ -264,6 +269,239 @@ class _AlimentDialogState extends State<AlimentDialog> with SingleTickerProvider
           const SizedBox(height: 24),
           const Divider(),
           const SizedBox(height: 16),
+          if (_scanError != null)
+            Container(
+              margin: const EdgeInsets.only(bottom: 16),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: _scanError == 'Données nutritionnelles non disponibles' 
+                    ? Colors.orange[50]
+                    : Colors.red[50],
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: _scanError == 'Données nutritionnelles non disponibles'
+                      ? Colors.orange[200]!
+                      : Colors.red[200]!,
+                ),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    _scanError == 'Données nutritionnelles non disponibles'
+                        ? Icons.warning_amber_rounded
+                        : Icons.error_outline,
+                    color: _scanError == 'Données nutritionnelles non disponibles'
+                        ? Colors.orange[700]
+                        : Colors.red[700],
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          _scanError == 'Données nutritionnelles non disponibles' 
+                              ? 'Données manquantes'
+                              : 'Produit non trouvé',
+                          style: TextStyle(
+                            color: _scanError == 'Données nutritionnelles non disponibles'
+                                ? Colors.orange[700]
+                                : Colors.red[700],
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        if (_scannedBarcode != null) ...[
+                          const SizedBox(height: 4),
+                          Text(
+                            'Code-barres: $_scannedBarcode',
+                            style: TextStyle(
+                              color: _scanError == 'Données nutritionnelles non disponibles'
+                                  ? Colors.orange[700]
+                                  : Colors.red[700],
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                        const SizedBox(height: 4),
+                        Text(
+                          _scanError == 'Données nutritionnelles non disponibles'
+                              ? 'Les informations nutritionnelles ne sont pas disponibles dans la base de données. Veuillez les saisir manuellement.'
+                              : 'Le produit n\'est pas dans la base de données Open Food Facts.',
+                          style: TextStyle(
+                            color: _scanError == 'Données nutritionnelles non disponibles'
+                                ? Colors.orange[700]
+                                : Colors.red[700],
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    color: _scanError == 'Données nutritionnelles non disponibles'
+                        ? Colors.orange[700]
+                        : Colors.red[700],
+                    onPressed: () {
+                      setState(() {
+                        _scanError = null;
+                        _scannedBarcode = null;
+                      });
+                    },
+                  ),
+                ],
+              ),
+            ),
+          if (_scanSuccess != null)
+            Container(
+              margin: const EdgeInsets.only(bottom: 16),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.green[50],
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.green[200]!),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.check_circle_outline, color: Colors.green[700]),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Données récupérées',
+                          style: TextStyle(
+                            color: Colors.green[700],
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                        if (_scannedBarcode != null) ...[
+                          const SizedBox(height: 4),
+                          Text(
+                            'Code-barres: $_scannedBarcode',
+                            style: TextStyle(
+                              color: Colors.green[700],
+                              fontSize: 12,
+                            ),
+                          ),
+                        ],
+                        const SizedBox(height: 4),
+                        Text(
+                          'Les informations nutritionnelles ont été importées avec succès.',
+                          style: TextStyle(
+                            color: Colors.green[700],
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close),
+                    color: Colors.green[700],
+                    onPressed: () {
+                      setState(() {
+                        _scanSuccess = null;
+                        _scannedBarcode = null;
+                      });
+                    },
+                  ),
+                ],
+              ),
+            ),
+          Text(
+            'Scanner de code-barres',
+            style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                  color: Colors.grey[700],
+                  fontWeight: FontWeight.bold,
+                ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Scannez le code-barres d\'un produit pour récupérer automatiquement ses informations',
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                  color: Colors.grey[600],
+                ),
+          ),
+          const SizedBox(height: 16),
+          Container(
+            height: 200,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.grey[300]!),
+            ),
+            child: ClipRRect(
+              borderRadius: BorderRadius.circular(8),
+              child: MobileScanner(
+                controller: MobileScannerController(
+                  detectionSpeed: DetectionSpeed.normal,
+                  facing: CameraFacing.back,
+                ),
+                onDetect: (capture) async {
+                  final now = DateTime.now();
+                  if (_lastScanTime != null && now.difference(_lastScanTime!) < _scanCooldown) {
+                    return;
+                  }
+                  _lastScanTime = now;
+
+                  final List<Barcode> barcodes = capture.barcodes;
+                  for (final barcode in barcodes) {
+                    if (barcode.rawValue != null) {
+                      final product = await _openFoodFactsService.getProductByBarcode(barcode.rawValue!);
+                      if (product != null) {
+                        print('Produit trouvé: ${product.toString()}');
+                        final nutriments = product['nutriments'] as Map<String, dynamic>?;
+                        print('Nutriments: ${nutriments.toString()}');
+                        
+                        setState(() {
+                          _nomController.text = product['product_name'] ?? product['name'] ?? '';
+                          
+                          final calories = nutriments?['energy-kcal_100g'] ?? 
+                                         nutriments?['energy_100g'] ?? 0;
+                          final proteines = nutriments?['proteins_100g'] ?? 0;
+                          final lipides = nutriments?['fat_100g'] ?? 0;
+                          final glucides = nutriments?['carbohydrates_100g'] ?? 0;
+
+                          print('Valeurs extraites:');
+                          print('Calories: $calories');
+                          print('Protéines: $proteines');
+                          print('Lipides: $lipides');
+                          print('Glucides: $glucides');
+
+                          final allValuesZero = calories == 0 && proteines == 0 && lipides == 0 && glucides == 0;
+
+                          if (allValuesZero) {
+                            _scanError = 'Données nutritionnelles non disponibles';
+                            _scanSuccess = null;
+                            _scannedBarcode = barcode.rawValue;
+                          } else {
+                            _caloriesController.text = calories.toString();
+                            _proteinesController.text = proteines.toString();
+                            _lipidesController.text = lipides.toString();
+                            _glucidesController.text = glucides.toString();
+                            _scanError = null;
+                            _scanSuccess = 'Données récupérées';
+                            _scannedBarcode = barcode.rawValue;
+                          }
+                        });
+                      } else {
+                        setState(() {
+                          _scanError = 'Produit non trouvé';
+                          _scanSuccess = null;
+                          _scannedBarcode = barcode.rawValue;
+                        });
+                      }
+                      break;
+                    }
+                  }
+                },
+              ),
+            ),
+          ),
+          const SizedBox(height: 24),
+          const Divider(),
+          const SizedBox(height: 16),
           SwitchListTile(
             title: const Text('Gestion par portion'),
             subtitle: const Text('Définir une unité de portion (tranche, unité...)'),
@@ -335,91 +573,6 @@ class _AlimentDialogState extends State<AlimentDialog> with SingleTickerProvider
                   fontWeight: FontWeight.bold,
                 ),
           ),
-          const SizedBox(height: 16),
-          Card(
-            elevation: 2,
-            child: InkWell(
-              onTap: () async {
-                final result = await Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => BarcodeScanner(
-                      onBarcodeDetected: (barcode) async {
-                        final product = await _openFoodFactsService.getProductByBarcode(barcode);
-                        if (product != null) {
-                          setState(() {
-                            _nomController.text = product['name'];
-                            _caloriesController.text = product['nutriments']['energy-kcal_100g'].toString();
-                            _proteinesController.text = product['nutriments']['proteins_100g'].toString();
-                            _lipidesController.text = product['nutriments']['fat_100g'].toString();
-                            _glucidesController.text = product['nutriments']['carbohydrates_100g'].toString();
-                          });
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Données nutritionnelles récupérées avec succès'),
-                            ),
-                          );
-                        } else {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text('Produit non trouvé dans la base de données'),
-                            ),
-                          );
-                        }
-                      },
-                    ),
-                  ),
-                );
-              },
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Row(
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        color: AppTheme.primaryBlue.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: const Icon(
-                        Icons.qr_code_scanner,
-                        color: AppTheme.primaryBlue,
-                        size: 32,
-                      ),
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Scanner un code-barres',
-                            style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                                  color: AppTheme.primaryBlue,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            'Récupérer automatiquement les informations nutritionnelles',
-                            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                                  color: Colors.grey[600],
-                                ),
-                          ),
-                        ],
-                      ),
-                    ),
-                    const Icon(
-                      Icons.arrow_forward_ios,
-                      color: AppTheme.primaryBlue,
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(height: 24),
-          const Divider(),
           const SizedBox(height: 16),
           Text(
             'Valeurs manuelles',

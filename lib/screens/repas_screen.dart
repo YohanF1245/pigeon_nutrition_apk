@@ -489,10 +489,16 @@ class _RepasScreenState extends State<RepasScreen> {
 
                   final repas = snapshot.data ?? [];
 
-                  return ListView.builder(
+                  return GridView.builder(
                     controller: scrollController,
                     scrollDirection: Axis.horizontal,
-                    padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                    gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+                      crossAxisCount: 3,
+                      mainAxisSpacing: 8,
+                      crossAxisSpacing: 8,
+                      childAspectRatio: (MediaQuery.of(context).size.width * 0.1) / 100, // 10% de la largeur de l'écran / hauteur fixe
+                    ),
+                    padding: const EdgeInsets.all(8.0),
                     itemCount: repas.length,
                     itemBuilder: (context, index) {
                       final repasItem = repas[index];
@@ -516,13 +522,8 @@ class _RepasScreenState extends State<RepasScreen> {
                           builder: (context, alimentsSnapshot) {
                             if (!alimentsSnapshot.hasData) {
                               return const Card(
-                                margin: EdgeInsets.symmetric(horizontal: 4.0),
-                                child: SizedBox(
-                                  width: 140,
-                                  height: double.infinity,
-                                  child: Center(
-                                    child: Text('Chargement...'),
-                                  ),
+                                child: Center(
+                                  child: Text('Chargement...'),
                                 ),
                               );
                             }
@@ -532,19 +533,13 @@ class _RepasScreenState extends State<RepasScreen> {
                               builder: (context, nutrimentSnapshot) {
                                 if (!nutrimentSnapshot.hasData) {
                                   return const Card(
-                                    margin: EdgeInsets.symmetric(horizontal: 4.0),
-                                    child: SizedBox(
-                                      width: 140,
-                                      height: double.infinity,
-                                      child: Center(
-                                        child: Text('Calcul des nutriments...'),
-                                      ),
+                                    child: Center(
+                                      child: Text('Calcul des nutriments...'),
                                     ),
                                   );
                                 }
                                 final nutriments = nutrimentSnapshot.data!;
                                 return Card(
-                                  margin: const EdgeInsets.fromLTRB(4.0, 0.0, 4.0, 8.0),
                                   child: GestureDetector(
                                     onTap: () async {
                                       showModalBottomSheet(
@@ -581,7 +576,6 @@ class _RepasScreenState extends State<RepasScreen> {
                                       );
                                     },
                                     child: Container(
-                                      width: 140,
                                       padding: const EdgeInsets.all(8.0),
                                       child: Column(
                                         mainAxisSize: MainAxisSize.min,

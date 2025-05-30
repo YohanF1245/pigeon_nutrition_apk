@@ -20,6 +20,11 @@ et ce projet adhère au [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   - Détails nutritionnels complets par repas
 
 ### Ajouté
+- Intégration du scanner de code-barres avec Open Food Facts :
+  - Scanner rapide des produits alimentaires
+  - Récupération automatique des informations nutritionnelles
+  - Ajout direct des aliments dans la base de données
+  - Interface utilisateur intuitive pour la saisie des quantités
 - Graphique des écarts nutritionnels dans le tableau de bord :
   - Visualisation des écarts entre consommation et objectifs
   - Affichage des 7 derniers jours minimum
@@ -91,6 +96,9 @@ et ce projet adhère au [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   - Affichage des pourcentages par rapport aux objectifs journaliers
 
 ### Corrections
+- Correction de l'affichage des repas dans l'agenda :
+  - Correction du bug de duplication des repas sur les jours précédents
+  - Correction du calcul des nutriments pour n'inclure que les repas du jour sélectionné
 - Correction de la quantité d'achat par défaut dans la liste de courses :
   - 1 unité pour les aliments gérés par portion (boîte, unité...)
   - 1000 pour les aliments gérés par masse (grammes, ml...)

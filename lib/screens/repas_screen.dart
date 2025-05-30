@@ -218,7 +218,7 @@ class _RepasScreenState extends State<RepasScreen> {
                     final joursRepas = repasParHeure[hour] ?? [];
 
                     return Container(
-                      height: 60,
+                      height: 30,
                       decoration: BoxDecoration(
                         border: Border(
                           bottom: BorderSide(
@@ -235,6 +235,7 @@ class _RepasScreenState extends State<RepasScreen> {
                             child: Text(
                               '${hour.toString().padLeft(2, '0')}:00',
                               textAlign: TextAlign.center,
+                              style: const TextStyle(fontSize: 12),
                             ),
                           ),
                           const VerticalDivider(),
@@ -309,30 +310,12 @@ class _RepasScreenState extends State<RepasScreen> {
                                     return Material(
                                       color: Colors.transparent,
                                       child: Container(
-                                        margin: const EdgeInsets.all(4),
+                                        margin: const EdgeInsets.all(2),
                                         decoration: BoxDecoration(
                                           color: Colors.blue[100],
                                           borderRadius: BorderRadius.circular(4),
                                         ),
-                                        child: ListTile(
-                                          dense: true,
-                                          contentPadding: const EdgeInsets.symmetric(horizontal: 8),
-                                          title: Row(
-                                            children: [
-                                              Expanded(
-                                                child: Text(
-                                                  repas.nom,
-                                                  style: const TextStyle(fontSize: 12),
-                                                  overflow: TextOverflow.ellipsis,
-                                                ),
-                                              ),
-                                              const Icon(
-                                                Icons.visibility_outlined,
-                                                size: 16,
-                                                color: Colors.black54,
-                                              ),
-                                            ],
-                                          ),
+                                        child: GestureDetector(
                                           onTap: () async {
                                             final aliments = await _alimentService.getAllAliments();
                                             if (!mounted) return;
@@ -362,6 +345,29 @@ class _RepasScreenState extends State<RepasScreen> {
                                               ),
                                             );
                                           },
+                                          child: Container(
+                                            height: 26, // 30 - 2*2 (marges)
+                                            padding: const EdgeInsets.symmetric(horizontal: 4),
+                                            child: Row(
+                                              mainAxisAlignment: MainAxisAlignment.start,
+                                              crossAxisAlignment: CrossAxisAlignment.center,
+                                              children: [
+                                                Expanded(
+                                                  child: Text(
+                                                    repas.nom,
+                                                    style: const TextStyle(fontSize: 10),
+                                                    overflow: TextOverflow.ellipsis,
+                                                  ),
+                                                ),
+                                                const SizedBox(width: 4),
+                                                const Icon(
+                                                  Icons.visibility_outlined,
+                                                  size: 12,
+                                                  color: Colors.black54,
+                                                ),
+                                              ],
+                                            ),
+                                          ),
                                         ),
                                       ),
                                     );
@@ -436,7 +442,7 @@ class _RepasScreenState extends State<RepasScreen> {
             children: [
               // En-tête avec titre et flèches
               SizedBox(
-                height: 40, // Hauteur réduite pour l'en-tête
+                height: 30,
                 child: Row(
                   children: [
                     IconButton(

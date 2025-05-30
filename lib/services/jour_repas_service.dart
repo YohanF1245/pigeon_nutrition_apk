@@ -125,9 +125,13 @@ class JourRepasService {
     List<String> whereArgs = [];
     
     if (date != null) {
+      // On crée une date de début à minuit
       final debut = DateTime(date.year, date.month, date.day);
-      final fin = debut.add(const Duration(days: 1));
-      whereClause = 'date BETWEEN ? AND ?';
+      // On crée une date de fin à minuit le jour suivant
+      final fin = DateTime(date.year, date.month, date.day + 1);
+      
+      // On utilise une comparaison stricte pour éviter les problèmes de fuseau horaire
+      whereClause = 'date >= ? AND date < ?';
       whereArgs = [debut.toIso8601String(), fin.toIso8601String()];
     }
 

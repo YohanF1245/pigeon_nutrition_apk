@@ -270,23 +270,34 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       final unite = entry.value['unite'] as String;
                       final progress = (actuel / objectif).clamp(0.0, 1.0);
 
-                      return Column(
-                        children: [
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                            children: [
-                              Text(nom),
-                              Text('${actuel.toStringAsFixed(1)}/${objectif.toStringAsFixed(1)} $unite'),
-                            ],
-                          ),
-                          const SizedBox(height: 4),
-                          LinearProgressIndicator(
-                            value: progress,
-                            backgroundColor: Colors.grey[200],
-                            color: _getProgressColor(progress),
-                          ),
-                          const SizedBox(height: 12),
-                        ],
+                      return Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: nom == 'Calories' ? Colors.blue.withOpacity(0.15) :
+                                 nom == 'Protéines' ? Colors.red.withOpacity(0.15) :
+                                 nom == 'Lipides' ? Colors.orange.withOpacity(0.15) :
+                                 nom == 'Glucides' ? Colors.green.withOpacity(0.15) :
+                                 Colors.grey.withOpacity(0.15),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Column(
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Text(nom),
+                                Text('${actuel.toStringAsFixed(1)}/${objectif.toStringAsFixed(1)} $unite'),
+                              ],
+                            ),
+                            const SizedBox(height: 4),
+                            LinearProgressIndicator(
+                              value: progress,
+                              backgroundColor: Colors.grey[200],
+                              color: _getProgressColor(progress),
+                            ),
+                            const SizedBox(height: 12),
+                          ],
+                        ),
                       );
                     }).toList(),
                   ),

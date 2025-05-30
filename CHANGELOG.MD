@@ -20,11 +20,18 @@ et ce projet adhère au [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   - Détails nutritionnels complets par repas
 
 ### Ajouté
+- Nouveau modèle `JourRepas` pour gérer les repas journaliers
+- Service `JourRepasService` pour la gestion des repas journaliers
+- Icône d'œil dans l'interface pour indiquer l'interactivité des repas
 - Intégration du scanner de code-barres avec Open Food Facts :
-  - Scanner rapide des produits alimentaires
+  - Scan rapide des produits alimentaires
   - Récupération automatique des informations nutritionnelles
-  - Ajout direct des aliments dans la base de données
-  - Interface utilisateur intuitive pour la saisie des quantités
+  - Ajout direct des aliments à la base de données
+  - Interface intuitive pour la saisie des quantités
+- Possibilité de réorganiser l'ordre des repas templates par glisser-déposer :
+  - Sauvegarde persistante de l'ordre personnalisé
+  - Interface intuitive avec indicateurs de glissement
+  - Conservation de l'ordre entre les sessions
 - Graphique des écarts nutritionnels dans le tableau de bord :
   - Visualisation des écarts entre consommation et objectifs
   - Affichage des 7 derniers jours minimum
@@ -82,14 +89,14 @@ et ce projet adhère au [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   - Plage horaire réduite de 6h à 23h pour une meilleure lisibilité
   - Format d'affichage des heures uniformisé (ex: "06:00" au lieu de "6:00")
 - Amélioration de l'icône d'ajustement du stock pour plus de clarté
-- Amélioration de la visualisation et de l'édition des repas
+- Amélioration de la visualisation et de l'édition des repas :
   - Ajout des boutons d'édition et de suppression dans la vue détaillée
   - Affichage complet des nutriments pour chaque aliment (calories, protéines, lipides, glucides)
   - Vue comparative des valeurs nutritionnelles (quantité sélectionnée vs 100g)
   - Indication visuelle des éléments interactifs
   - Affichage des pourcentages par rapport aux objectifs journaliers
   - Support de la modification d'un repas existant
-- Optimisation de l'affichage des aliments dans un repas
+- Optimisation de l'affichage des aliments dans un repas :
   - Réorganisation des informations nutritionnelles sur une ligne dédiée
   - Ajout d'une icône pour accéder aux détails de l'aliment
   - Simplification et amélioration de la boîte de dialogue des détails
@@ -102,6 +109,16 @@ et ce projet adhère au [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   - Application cohérente dans le dashboard, les repas et les aliments
   - Amélioration de la lisibilité des barres de progression
   - Texte en gras et coloré pour une meilleure identification visuelle
+- Amélioration de l'interface de gestion des repas journaliers
+- Optimisation de l'initialisation de la base de données
+- Optimisation du service d'arrière-plan
+- Meilleure gestion des aliments supprimés dans l'affichage des repas
+- Nouvelle interface des repas disponibles :
+  - Ajout d'un système de dépliage/repli pour la section des repas
+  - Mode replié : affichage minimal avec icône de dépliage
+  - Mode déplié : grille de 3 lignes avec scrolling horizontal
+  - Optimisation de l'espace avec des cartes de repas redimensionnées
+  - Meilleure organisation visuelle des informations nutritionnelles
 
 ### Corrections
 - Correction de l'affichage des repas dans l'agenda :
@@ -114,6 +131,13 @@ et ce projet adhère au [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - Correction du rafraîchissement dynamique du dashboard après modification des paramètres nutritionnels :
   - Suppression du `final` sur la liste `_screens` pour permettre la réaffectation
   - Forçage de la reconstruction du dashboard après sauvegarde des paramètres
+- Correction des problèmes de chargement infini de l'application
+- Correction de l'affichage des détails des repas
+- Correction de la superposition des repas dans l'agenda
+- Amélioration de la réactivité des interactions tactiles
+- Correction des calculs de macronutriments pour plus de précision
+- Ajustement des proportions d'affichage pour éviter les débordements
+- Optimisation de l'utilisation de l'espace dans l'interface
 
 ## [0.1.2] - 2024-03-22
 
@@ -146,25 +170,6 @@ et ce projet adhère au [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 - Gestion des stocks
 - Calcul des valeurs nutritionnelles
 - Interface utilisateur de base
-
-## [Non publié]
-
-### Ajouté
-- Nouveau modèle `JourRepas` pour gérer les repas journaliers
-- Service `JourRepasService` pour la gestion des repas journaliers
-- Icône d'œil dans l'interface pour indiquer l'interactivité des repas
-
-### Modifié
-- Amélioration de l'interface de gestion des repas journaliers
-- Optimisation de l'initialisation de la base de données
-- Optimisation du service d'arrière-plan
-- Meilleure gestion des aliments supprimés dans l'affichage des repas
-
-### Corrigé
-- Correction des problèmes de chargement infini de l'application
-- Correction de l'affichage des détails des repas
-- Correction de la superposition des repas dans l'agenda
-- Amélioration de la réactivité des interactions tactiles
 
 ## [1.0.0] - 2024-01-XX
 

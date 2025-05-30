@@ -55,6 +55,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   @override
+  void didUpdateWidget(DashboardScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.databaseService != widget.databaseService) {
+      _loadData();
+    }
+  }
+
+  @override
   void dispose() {
     _refreshController.close();
     super.dispose();

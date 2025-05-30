@@ -94,6 +94,14 @@ et ce projet adhère au [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
   - Ajout d'une icône pour accéder aux détails de l'aliment
   - Simplification et amélioration de la boîte de dialogue des détails
   - Affichage des pourcentages par rapport aux objectifs journaliers
+- Harmonisation des couleurs dans l'application :
+  - Calories : bleu
+  - Protéines : rouge
+  - Lipides : orange
+  - Glucides : vert
+  - Application cohérente dans le dashboard, les repas et les aliments
+  - Amélioration de la lisibilité des barres de progression
+  - Texte en gras et coloré pour une meilleure identification visuelle
 
 ### Corrections
 - Correction de l'affichage des repas dans l'agenda :

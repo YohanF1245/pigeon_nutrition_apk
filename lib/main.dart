@@ -126,7 +126,7 @@ class _MainScreenState extends State<MainScreen> {
   int _selectedIndex = 0;
   bool _showListeCourses = false;
   List<dynamic> _alimentsEnRupture = [];
-  late List<Widget> _screens;
+  late final List<Widget> _screens;
   final Map<String, bool> _listeCoursesCheckedState = {};
   final DatabaseService _databaseService = DatabaseService();
 
@@ -258,29 +258,21 @@ class _MainScreenState extends State<MainScreen> {
                 context,
                 MaterialPageRoute(builder: (context) => const ParametresNutritionnelsScreen()),
               );
-              if (result == true) {
-                _selectedIndex = 0;
+              if (result == true && _selectedIndex == 0) {
                 setState(() {
-                  // Recréer tous les écrans pour forcer un rafraîchissement complet
-                  _screens = [
-                    DashboardScreen(
-                      key: UniqueKey(),
-                      databaseService: _databaseService,
-                      onAlimentsEnRuptureChanged: (aliments) {
-                        Future.microtask(() {
-                          if (mounted) {
-                            setState(() {
-                              _alimentsEnRupture = aliments;
-                            });
-                          }
-                        });
-                      },
-                    ),
-                    const AlimentsScreen(),
-                    const RepasScreen(),
-                    const EntrainementsScreen(),
-                    const MesuresScreen(),
-                  ];
+                  // Recréer le dashboard pour forcer un rafraîchissement complet
+                  _screens[0] = DashboardScreen(
+                    databaseService: _databaseService,
+                    onAlimentsEnRuptureChanged: (aliments) {
+                      Future.microtask(() {
+                        if (mounted) {
+                          setState(() {
+                            _alimentsEnRupture = aliments;
+                          });
+                        }
+                      });
+                    },
+                  );
                 });
               }
             },
@@ -315,7 +307,6 @@ class _MainScreenState extends State<MainScreen> {
                     // Mettre à jour le dashboard et les aliments en une seule fois
                     setState(() {
                       _screens[0] = DashboardScreen(
-                        key: UniqueKey(),
                         databaseService: _databaseService,
                         onAlimentsEnRuptureChanged: (aliments) {
                           if (mounted) {

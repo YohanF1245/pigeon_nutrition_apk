@@ -3,6 +3,8 @@ import 'package:uuid/uuid.dart';
 import '../models/aliment.dart';
 import '../models/unite_base.dart';
 import '../theme/app_theme.dart';
+import '../services/open_food_facts_service.dart';
+import 'barcode_scanner.dart';
 
 class AlimentDialog extends StatefulWidget {
   final Aliment? aliment;
@@ -42,6 +44,7 @@ class _AlimentDialogState extends State<AlimentDialog> with SingleTickerProvider
   bool _autoDecrementation = false;
   bool _gestionPortion = false;
   UniteBase _unite = UniteBase.gramme;
+  final _openFoodFactsService = OpenFoodFactsService();
 
   @override
   void initState() {
@@ -325,12 +328,53 @@ class _AlimentDialogState extends State<AlimentDialog> with SingleTickerProvider
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'Valeurs nutritionnelles pour 100${_unite.symbole}',
-            style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                  color: AppTheme.primaryBlue,
-                  fontWeight: FontWeight.bold,
-                ),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Valeurs nutritionnelles pour 100${_unite.symbole}',
+                style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                      color: AppTheme.primaryBlue,
+                      fontWeight: FontWeight.bold,
+                    ),
+              ),
+              IconButton(
+                icon: const Icon(Icons.qr_code_scanner),
+                onPressed: () async {
+                  final result = await Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => BarcodeScanner(
+                        onBarcodeDetected: (barcode) async {
+                          final product = await _openFoodFactsService.getProductByBarcode(barcode);
+                          if (product != null) {
+                            setState(() {
+                              _nomController.text = product['name'];
+                              _caloriesController.text = product['nutriments']['energy-kcal_100g'].toString();
+                              _proteinesController.text = product['nutriments']['proteins_100g'].toString();
+                              _lipidesController.text = product['nutriments']['fat_100g'].toString();
+                              _glucidesController.text = product['nutriments']['carbohydrates_100g'].toString();
+                            });
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Données nutritionnelles récupérées avec succès'),
+                              ),
+                            );
+                          } else {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Produit non trouvé dans la base de données'),
+                              ),
+                            );
+                          }
+                        },
+                      ),
+                    ),
+                  );
+                },
+                tooltip: 'Scanner un code-barres',
+              ),
+            ],
           ),
           const SizedBox(height: 16),
           Row(

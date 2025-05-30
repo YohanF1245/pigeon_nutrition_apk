@@ -21,6 +21,7 @@ class _RepasScreenState extends State<RepasScreen> {
   final AlimentService _alimentService = AlimentService();
   final DateFormat _dateFormat = DateFormat('dd/MM/yyyy HH:mm');
   DateTime _selectedDate = DateTime.now();
+  bool _isRepasExpanded = false;
 
   @override
   Widget build(BuildContext context) {
@@ -53,16 +54,16 @@ class _RepasScreenState extends State<RepasScreen> {
               child: _buildMacronutrientsSection(),
             ),
             
-            // Section de l'agenda (70% de la hauteur disponible)
+            // Section de l'agenda (90% ou 45% selon l'état)
             Container(
-              height: availableHeight * 0.7,
+              height: availableHeight * (_isRepasExpanded ? 0.45 : 0.8),
               padding: const EdgeInsets.symmetric(vertical: 4.0, horizontal: 8.0),
               child: _buildAgendaSection(),
             ),
             
-            // Section de la liste des repas (20% de la hauteur disponible)
+            // Section de la liste des repas (10% ou 45% selon l'état)
             Container(
-              height: availableHeight * 0.2,
+              height: availableHeight * (_isRepasExpanded ? 0.45 : 0.1),
               padding: const EdgeInsets.symmetric(vertical: 4.0, horizontal: 8.0),
               child: _buildMealListSection(),
             ),
@@ -428,38 +429,42 @@ class _RepasScreenState extends State<RepasScreen> {
       }
     }
 
-    return FutureBuilder<List<Repas>>(
-      future: _storageService.getRepas(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        }
-
-        final repas = snapshot.data ?? [];
-
-        return Card(
-          child: Column(
-            children: [
-              // En-tête avec titre et flèches
-              SizedBox(
-                height: 30,
-                child: Row(
-                  children: [
+    return Card(
+      child: Column(
+        children: [
+          // En-tête avec titre et flèches
+          GestureDetector(
+            onTap: () {
+              setState(() {
+                _isRepasExpanded = !_isRepasExpanded;
+              });
+            },
+            child: Container(
+              height: 30,
+              padding: const EdgeInsets.symmetric(horizontal: 8.0),
+              child: Row(
+                children: [
+                  Icon(
+                    _isRepasExpanded ? Icons.expand_less : Icons.expand_more,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 8),
+                  const Expanded(
+                    child: Text(
+                      'Repas disponibles',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  if (_isRepasExpanded) ...[
                     IconButton(
                       icon: const Icon(Icons.chevron_left),
                       onPressed: _scrollLeft,
                       padding: EdgeInsets.zero,
                       visualDensity: VisualDensity.compact,
-                    ),
-                    const Expanded(
-                      child: Text(
-                        'Repas disponibles',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
                     ),
                     IconButton(
                       icon: const Icon(Icons.chevron_right),
@@ -468,225 +473,237 @@ class _RepasScreenState extends State<RepasScreen> {
                       visualDensity: VisualDensity.compact,
                     ),
                   ],
-                ),
+                ],
               ),
-              // Liste des repas
-              Expanded(
-                child: ListView.builder(
-                  controller: scrollController,
-                  scrollDirection: Axis.horizontal,
-                  padding: const EdgeInsets.symmetric(horizontal: 8.0),
-                  itemCount: repas.length,
-                  itemBuilder: (context, index) {
-                    final repasItem = repas[index];
-                    return Draggable<Repas>(
-                      data: repasItem,
-                      feedback: Material(
-                        elevation: 4.0,
-                        child: Container(
+            ),
+          ),
+          // Liste des repas (visible uniquement si déplié)
+          if (_isRepasExpanded)
+            Expanded(
+              child: FutureBuilder<List<Repas>>(
+                future: _storageService.getRepas(),
+                builder: (context, snapshot) {
+                  if (snapshot.connectionState == ConnectionState.waiting) {
+                    return const Center(child: CircularProgressIndicator());
+                  }
+
+                  final repas = snapshot.data ?? [];
+
+                  return ListView.builder(
+                    controller: scrollController,
+                    scrollDirection: Axis.horizontal,
+                    padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                    itemCount: repas.length,
+                    itemBuilder: (context, index) {
+                      final repasItem = repas[index];
+                      return Draggable<Repas>(
+                        data: repasItem,
+                        feedback: Material(
+                          elevation: 4.0,
+                          child: Container(
+                            padding: const EdgeInsets.all(8.0),
+                            color: Colors.white,
+                            child: Text(repasItem.nom),
+                          ),
+                        ),
+                        childWhenDragging: Container(
                           padding: const EdgeInsets.all(8.0),
-                          color: Colors.white,
+                          color: Colors.grey[200],
                           child: Text(repasItem.nom),
                         ),
-                      ),
-                      childWhenDragging: Container(
-                        padding: const EdgeInsets.all(8.0),
-                        color: Colors.grey[200],
-                        child: Text(repasItem.nom),
-                      ),
-                      child: FutureBuilder<List<Aliment>>(
-                        future: _alimentService.getAllAliments(),
-                        builder: (context, alimentsSnapshot) {
-                          if (!alimentsSnapshot.hasData) {
-                            return const Card(
-                              margin: EdgeInsets.symmetric(horizontal: 4.0),
-                              child: SizedBox(
-                                width: 140,
-                                height: double.infinity,
-                                child: Center(
-                                  child: Text('Chargement...'),
-                                ),
-                              ),
-                            );
-                          }
-
-                          return FutureBuilder<Map<String, double>>(
-                            future: repasItem.calculerNutriments(alimentsSnapshot.data!),
-                            builder: (context, nutrimentSnapshot) {
-                              if (!nutrimentSnapshot.hasData) {
-                                return const Card(
-                                  margin: EdgeInsets.symmetric(horizontal: 4.0),
-                                  child: SizedBox(
-                                    width: 140,
-                                    height: double.infinity,
-                                    child: Center(
-                                      child: Text('Calcul des nutriments...'),
-                                    ),
-                                  ),
-                                );
-                              }
-                              final nutriments = nutrimentSnapshot.data!;
-                              return Card(
-                                margin: const EdgeInsets.fromLTRB(4.0, 0.0, 4.0, 8.0),
-                                child: GestureDetector(
-                                  onTap: () async {
-                                    showModalBottomSheet(
-                                      context: context,
-                                      builder: (context) => Column(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          ListTile(
-                                            leading: const Icon(Icons.visibility),
-                                            title: const Text('Voir les détails'),
-                                            onTap: () {
-                                              Navigator.pop(context);
-                                              _afficherDetailsRepas(context, repasItem, alimentsSnapshot.data!);
-                                            },
-                                          ),
-                                          ListTile(
-                                            leading: const Icon(Icons.edit),
-                                            title: const Text('Modifier'),
-                                            onTap: () {
-                                              Navigator.pop(context);
-                                              _modifierRepas(context, repasItem);
-                                            },
-                                          ),
-                                          ListTile(
-                                            leading: const Icon(Icons.delete, color: Colors.red),
-                                            title: const Text('Supprimer', style: TextStyle(color: Colors.red)),
-                                            onTap: () {
-                                              Navigator.pop(context);
-                                              _confirmerSuppressionRepas(context, repasItem, alimentsSnapshot.data!);
-                                            },
-                                          ),
-                                        ],
-                                      ),
-                                    );
-                                  },
-                                  child: Container(
-                                    width: 140,
-                                    padding: const EdgeInsets.all(8.0),
-                                    child: Column(
-                                      mainAxisSize: MainAxisSize.min,
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          repasItem.nom,
-                                          style: const TextStyle(
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 14,
-                                          ),
-                                          maxLines: 1,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                        const SizedBox(height: 4),
-                                        Row(
-                                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                          children: [
-                                            RichText(
-                                              text: TextSpan(
-                                                style: DefaultTextStyle.of(context).style.copyWith(
-                                                  fontSize: 12,
-                                                ),
-                                                children: [
-                                                  const TextSpan(
-                                                    text: 'Cal : ',
-                                                    style: TextStyle(color: Colors.blue),
-                                                  ),
-                                                  TextSpan(
-                                                    text: nutriments['calories']?.toStringAsFixed(0),
-                                                    style: const TextStyle(
-                                                      color: Colors.blue,
-                                                      fontWeight: FontWeight.bold,
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                            ),
-                                            RichText(
-                                              text: TextSpan(
-                                                style: DefaultTextStyle.of(context).style.copyWith(
-                                                  fontSize: 12,
-                                                ),
-                                                children: [
-                                                  const TextSpan(
-                                                    text: 'Prot : ',
-                                                    style: TextStyle(color: Colors.red),
-                                                  ),
-                                                  TextSpan(
-                                                    text: '${nutriments['proteines']?.toStringAsFixed(0)} g',
-                                                    style: const TextStyle(
-                                                      color: Colors.red,
-                                                      fontWeight: FontWeight.bold,
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                        Row(
-                                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                          children: [
-                                            RichText(
-                                              text: TextSpan(
-                                                style: DefaultTextStyle.of(context).style.copyWith(
-                                                  fontSize: 12,
-                                                ),
-                                                children: [
-                                                  const TextSpan(
-                                                    text: 'Lip : ',
-                                                    style: TextStyle(color: Colors.orange),
-                                                  ),
-                                                  TextSpan(
-                                                    text: '${nutriments['lipides']?.toStringAsFixed(0)} g',
-                                                    style: const TextStyle(
-                                                      color: Colors.orange,
-                                                      fontWeight: FontWeight.bold,
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                            ),
-                                            RichText(
-                                              text: TextSpan(
-                                                style: DefaultTextStyle.of(context).style.copyWith(
-                                                  fontSize: 12,
-                                                ),
-                                                children: [
-                                                  const TextSpan(
-                                                    text: 'Gluc : ',
-                                                    style: TextStyle(color: Colors.green),
-                                                  ),
-                                                  TextSpan(
-                                                    text: '${nutriments['glucides']?.toStringAsFixed(0)} g',
-                                                    style: const TextStyle(
-                                                      color: Colors.green,
-                                                      fontWeight: FontWeight.bold,
-                                                    ),
-                                                  ),
-                                                ],
-                                              ),
-                                            ),
-                                          ],
-                                        ),
-                                      ],
-                                    ),
+                        child: FutureBuilder<List<Aliment>>(
+                          future: _alimentService.getAllAliments(),
+                          builder: (context, alimentsSnapshot) {
+                            if (!alimentsSnapshot.hasData) {
+                              return const Card(
+                                margin: EdgeInsets.symmetric(horizontal: 4.0),
+                                child: SizedBox(
+                                  width: 140,
+                                  height: double.infinity,
+                                  child: Center(
+                                    child: Text('Chargement...'),
                                   ),
                                 ),
                               );
-                            },
-                          );
-                        },
-                      ),
-                    );
-                  },
-                ),
+                            }
+
+                            return FutureBuilder<Map<String, double>>(
+                              future: repasItem.calculerNutriments(alimentsSnapshot.data!),
+                              builder: (context, nutrimentSnapshot) {
+                                if (!nutrimentSnapshot.hasData) {
+                                  return const Card(
+                                    margin: EdgeInsets.symmetric(horizontal: 4.0),
+                                    child: SizedBox(
+                                      width: 140,
+                                      height: double.infinity,
+                                      child: Center(
+                                        child: Text('Calcul des nutriments...'),
+                                      ),
+                                    ),
+                                  );
+                                }
+                                final nutriments = nutrimentSnapshot.data!;
+                                return Card(
+                                  margin: const EdgeInsets.fromLTRB(4.0, 0.0, 4.0, 8.0),
+                                  child: GestureDetector(
+                                    onTap: () async {
+                                      showModalBottomSheet(
+                                        context: context,
+                                        builder: (context) => Column(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            ListTile(
+                                              leading: const Icon(Icons.visibility),
+                                              title: const Text('Voir les détails'),
+                                              onTap: () {
+                                                Navigator.pop(context);
+                                                _afficherDetailsRepas(context, repasItem, alimentsSnapshot.data!);
+                                              },
+                                            ),
+                                            ListTile(
+                                              leading: const Icon(Icons.edit),
+                                              title: const Text('Modifier'),
+                                              onTap: () {
+                                                Navigator.pop(context);
+                                                _modifierRepas(context, repasItem);
+                                              },
+                                            ),
+                                            ListTile(
+                                              leading: const Icon(Icons.delete, color: Colors.red),
+                                              title: const Text('Supprimer', style: TextStyle(color: Colors.red)),
+                                              onTap: () {
+                                                Navigator.pop(context);
+                                                _confirmerSuppressionRepas(context, repasItem, alimentsSnapshot.data!);
+                                              },
+                                            ),
+                                          ],
+                                        ),
+                                      );
+                                    },
+                                    child: Container(
+                                      width: 140,
+                                      padding: const EdgeInsets.all(8.0),
+                                      child: Column(
+                                        mainAxisSize: MainAxisSize.min,
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            repasItem.nom,
+                                            style: const TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 14,
+                                            ),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                          const SizedBox(height: 4),
+                                          Row(
+                                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                            children: [
+                                              RichText(
+                                                text: TextSpan(
+                                                  style: DefaultTextStyle.of(context).style.copyWith(
+                                                    fontSize: 12,
+                                                  ),
+                                                  children: [
+                                                    const TextSpan(
+                                                      text: 'Cal : ',
+                                                      style: TextStyle(color: Colors.blue),
+                                                    ),
+                                                    TextSpan(
+                                                      text: nutriments['calories']?.toStringAsFixed(0),
+                                                      style: const TextStyle(
+                                                        color: Colors.blue,
+                                                        fontWeight: FontWeight.bold,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                              RichText(
+                                                text: TextSpan(
+                                                  style: DefaultTextStyle.of(context).style.copyWith(
+                                                    fontSize: 12,
+                                                  ),
+                                                  children: [
+                                                    const TextSpan(
+                                                      text: 'Prot : ',
+                                                      style: TextStyle(color: Colors.red),
+                                                    ),
+                                                    TextSpan(
+                                                      text: '${nutriments['proteines']?.toStringAsFixed(0)} g',
+                                                      style: const TextStyle(
+                                                        color: Colors.red,
+                                                        fontWeight: FontWeight.bold,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                          Row(
+                                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                            children: [
+                                              RichText(
+                                                text: TextSpan(
+                                                  style: DefaultTextStyle.of(context).style.copyWith(
+                                                    fontSize: 12,
+                                                  ),
+                                                  children: [
+                                                    const TextSpan(
+                                                      text: 'Lip : ',
+                                                      style: TextStyle(color: Colors.orange),
+                                                    ),
+                                                    TextSpan(
+                                                      text: '${nutriments['lipides']?.toStringAsFixed(0)} g',
+                                                      style: const TextStyle(
+                                                        color: Colors.orange,
+                                                        fontWeight: FontWeight.bold,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                              RichText(
+                                                text: TextSpan(
+                                                  style: DefaultTextStyle.of(context).style.copyWith(
+                                                    fontSize: 12,
+                                                  ),
+                                                  children: [
+                                                    const TextSpan(
+                                                      text: 'Gluc : ',
+                                                      style: TextStyle(color: Colors.green),
+                                                    ),
+                                                    TextSpan(
+                                                      text: '${nutriments['glucides']?.toStringAsFixed(0)} g',
+                                                      style: const TextStyle(
+                                                        color: Colors.green,
+                                                        fontWeight: FontWeight.bold,
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                );
+                              },
+                            );
+                          },
+                        ),
+                      );
+                    },
+                  );
+                },
               ),
-            ],
-          ),
-        );
-      },
+            ),
+        ],
+      ),
     );
   }
 

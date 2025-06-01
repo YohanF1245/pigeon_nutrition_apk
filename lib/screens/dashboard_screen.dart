@@ -23,10 +23,10 @@ class DashboardScreen extends StatefulWidget {
   });
 
   @override
-  State<DashboardScreen> createState() => _DashboardScreenState();
+  State<DashboardScreen> createState() => DashboardScreenState();
 }
 
-class _DashboardScreenState extends State<DashboardScreen> {
+class DashboardScreenState extends State<DashboardScreen> {
   final AlimentService _alimentService = AlimentService();
   final StorageService _storageService = StorageService();
   late final NutritionHistoryService _nutritionHistoryService;

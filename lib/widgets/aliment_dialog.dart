@@ -81,11 +81,11 @@ class _AlimentDialogState extends State<AlimentDialog> with SingleTickerProvider
       _prixUnitaireController.text = '0';
       _deviseController.text = 'EUR';
       _quantiteStockController.text = '0';
-      _quantiteAchatParDefautController.text = '1000';
       _caloriesController.text = '0';
       _proteinesController.text = '0';
       _lipidesController.text = '0';
       _glucidesController.text = '0';
+      _updateQuantiteAchatParDefaut();
     }
   }
 
@@ -519,40 +519,36 @@ class _AlimentDialogState extends State<AlimentDialog> with SingleTickerProvider
           if (_gestionPortion) ...[
             const SizedBox(height: 16),
             TextFormField(
-              controller: _poidsUnitaireController,
-              decoration: const InputDecoration(
-                labelText: 'Poids par unité (en grammes)',
-                hintText: 'Ex: 30 pour une tranche de 30g',
-              ),
-              keyboardType: TextInputType.number,
-              validator: _validateNumber,
-              onTap: () => _poidsUnitaireController.selection = TextSelection(
-                baseOffset: 0,
-                extentOffset: _poidsUnitaireController.text.length,
-              ),
-            ),
-            const SizedBox(height: 16),
-            TextFormField(
               controller: _unitePortionLabelController,
               decoration: const InputDecoration(
-                labelText: 'Label de l\'unité',
-                hintText: 'Ex: tranche, unité, boîte',
+                labelText: 'Unité de portion',
+                hintText: 'Ex: Boite, Oeuf, Tranche',
               ),
-              validator: (value) => value!.isEmpty ? 'Ce champ est requis' : null,
             ),
             const SizedBox(height: 16),
             TextFormField(
               controller: _nombreUniteParLotController,
               decoration: const InputDecoration(
                 labelText: 'Nombre d\'unités par lot',
-                hintText: 'Ex: 6 tranches par paquet',
+                hintText: 'Ex: 6 pour une boite de 6 oeufs',
               ),
               keyboardType: TextInputType.number,
               validator: (value) => value!.isNotEmpty ? _validateNumber(value) : null,
-              onTap: () => _nombreUniteParLotController.selection = TextSelection(
-                baseOffset: 0,
-                extentOffset: _nombreUniteParLotController.text.length,
+              onChanged: (value) {
+                setState(() {
+                  _updateQuantiteAchatParDefaut();
+                });
+              },
+            ),
+            const SizedBox(height: 16),
+            TextFormField(
+              controller: _poidsUnitaireController,
+              decoration: const InputDecoration(
+                labelText: 'Poids par unité (en grammes)',
+                hintText: 'Ex: 60 pour un oeuf de 60g',
               ),
+              keyboardType: TextInputType.number,
+              validator: (value) => value!.isNotEmpty ? _validateNumber(value) : null,
             ),
           ],
         ],
@@ -775,7 +771,14 @@ class _AlimentDialogState extends State<AlimentDialog> with SingleTickerProvider
 
   void _updateQuantiteAchatParDefaut() {
     if (_gestionPortion) {
-      _quantiteAchatParDefautController.text = '1';
+      final nombreUniteParLot = _nombreUniteParLotController.text.isNotEmpty 
+          ? int.parse(_nombreUniteParLotController.text) 
+          : null;
+      if (nombreUniteParLot != null) {
+        _quantiteAchatParDefautController.text = nombreUniteParLot.toString();
+      } else {
+        _quantiteAchatParDefautController.text = '1';
+      }
     } else {
       _quantiteAchatParDefautController.text = '1000';
     }

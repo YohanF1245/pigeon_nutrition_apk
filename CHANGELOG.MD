@@ -4,8 +4,12 @@ Toutes les modifications notables de ce projet seront documentées dans ce fichi
 
 Le format est basé sur [Keep a Changelog](https://keepachangelog.com/fr/1.1.0/),
 et ce projet adhère au [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
+## [0.2.1] - En développement
 
-## [0.2.0] - En développement
+### Corrections
+- Correction de la valeur par défaut des quantités a acheter dans la liste de courses
+
+## [0.2.0]
 
 ### En cours
 - Système de gestion des repas

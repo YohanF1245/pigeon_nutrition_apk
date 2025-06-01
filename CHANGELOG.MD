@@ -8,6 +8,7 @@ et ce projet adhère au [Semantic Versioning](https://semver.org/spec/v2.0.0.htm
 
 ### Corrections
 - Correction de la valeur par défaut des quantités a acheter dans la liste de courses
+- Correction de la mise a jour des informations du dashboard après une mise a jour des paramètres
 
 ## [0.2.0]
 

@@ -38,7 +38,10 @@ class Aliment {
     this.poidsUnitaire,
     this.unitePortionLabel,
     this.nombreUniteParLot,
-  }) : quantiteAchatParDefaut = quantiteAchatParDefaut ?? (unitePortionLabel != null ? 1.0 : 1000.0);
+  }) : quantiteAchatParDefaut = quantiteAchatParDefaut ?? 
+       (unitePortionLabel != null && nombreUniteParLot != null ? 
+        nombreUniteParLot.toDouble() : 
+        (unitePortionLabel != null ? 1.0 : 1000.0));
 
   Map<String, dynamic> toMap() {
     return {

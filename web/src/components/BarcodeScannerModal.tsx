@@ -10,6 +10,13 @@ const BARCODE_FORMATS = [
   Html5QrcodeSupportedFormats.CODE_39,
 ];
 
+/** Zone de scan en bande horizontale (adaptée aux codes-barres EAN/UPC). */
+function qrboxSizeForBarcode(viewfinderWidth: number, viewfinderHeight: number): { width: number; height: number } {
+  const width = Math.floor(viewfinderWidth * 0.92);
+  const height = Math.max(Math.floor(viewfinderHeight * 0.35), 80);
+  return { width, height };
+}
+
 function preferredBackCameraId(cameras: { id: string; label: string }[]): string | null {
   const back = cameras.find((c) => /back|arrière|environment|rear/i.test(c.label));
   return back?.id ?? cameras[0]?.id ?? null;
@@ -66,8 +73,8 @@ export function BarcodeScannerModal({ open, onClose, onScan }: BarcodeScannerMod
         .start(
           cameraIdToUse,
           {
-            fps: 15,
-            qrbox: undefined,
+            fps: 20,
+            qrbox: qrboxSizeForBarcode,
             aspectRatio: 1.333,
             disableFlip: false,
             videoConstraints: {
@@ -146,8 +153,9 @@ export function BarcodeScannerModal({ open, onClose, onScan }: BarcodeScannerMod
             <div
               id={containerId}
               style={{
-                minHeight: 240,
+                minHeight: 300,
                 minWidth: 320,
+                width: '100%',
               }}
             />
           </div>
@@ -165,7 +173,7 @@ export function BarcodeScannerModal({ open, onClose, onScan }: BarcodeScannerMod
             </p>
           )}
           <p style={{ marginTop: 12, fontSize: '0.85rem', color: 'var(--text-muted)' }}>
-            Code-barres (EAN, UPC…) : placez-le face à la caméra, tout le cadre est scanné. Détection automatique.
+            Placez le code-barres dans le cadre blanc. Tenez le téléphone stable, à 15–20 cm du code.
           </p>
         </div>
         <div className="modal-footer">

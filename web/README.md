@@ -18,6 +18,9 @@ npm run dev      # dev http://localhost:5173
 npm run build    # build production (base /)
 npm run build:gh # build pour GitHub Pages (base /pigeon_nutrition_apk/)
 npm run deploy:gh # build:gh puis push dist sur branche gh-pages
+npm run test     # tests en watch
+npm run test:run # tests une fois
+npm run test:coverage # tests + rapport de couverture (Vitest + v8)
 ```
 
 ## Déploiement GitHub Pages

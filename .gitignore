@@ -101,6 +101,7 @@ pubspec.lock
 
 # Web
 **/web/**/lib/generated_plugin_registrant.dart
+web/dist
 
 # VS Code
 .vscode/

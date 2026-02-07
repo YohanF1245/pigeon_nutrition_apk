@@ -31,6 +31,7 @@ interface BarcodeScannerModalProps {
 export function BarcodeScannerModal({ open, onClose, onScan }: BarcodeScannerModalProps) {
   const containerId = useRef(`barcode-scanner-${Math.random().toString(36).slice(2, 9)}`).current;
   const scannerRef = useRef<Html5Qrcode | null>(null);
+  const scanHandledRef = useRef(false);
   const [error, setError] = useState<string | null>(null);
   const [starting, setStarting] = useState(false);
   const [mirrorDisplay, setMirrorDisplay] = useState(true);
@@ -39,6 +40,7 @@ export function BarcodeScannerModal({ open, onClose, onScan }: BarcodeScannerMod
 
   useEffect(() => {
     if (!open) return;
+    scanHandledRef.current = false;
     setError(null);
     setCameras([]);
     setSelectedCameraId(null);
@@ -84,8 +86,13 @@ export function BarcodeScannerModal({ open, onClose, onScan }: BarcodeScannerMod
             },
           },
         (decodedText) => {
-          const barcode = decodedText;
+          if (scanHandledRef.current) return;
+          const scanner = scannerRef.current;
+          if (!scanner) return;
+          scanHandledRef.current = true;
           scannerRef.current = null;
+          scanner.stop().catch(() => {});
+          const barcode = decodedText;
           onClose();
           requestAnimationFrame(() => {
             onScan(barcode);

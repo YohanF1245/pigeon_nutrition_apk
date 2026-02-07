@@ -53,25 +53,29 @@ export function BarcodeScannerModal({ open, onClose, onScan }: BarcodeScannerMod
 
     setError(null);
     setStarting(true);
-    const scanner = new Html5Qrcode(containerId, {
-      formatsToSupport: BARCODE_FORMATS,
-      verbose: false,
-    });
-    scannerRef.current = scanner;
+    const cameraIdToUse = selectedCameraId;
 
-    scanner
-      .start(
-        selectedCameraId,
-        {
-          fps: 15,
-          qrbox: undefined,
-          aspectRatio: 1.333,
-          disableFlip: false,
-          videoConstraints: {
-            width: { ideal: 1280, min: 640 },
-            height: { ideal: 720, min: 480 },
+    const timeoutId = setTimeout(() => {
+      const scanner = new Html5Qrcode(containerId, {
+        formatsToSupport: BARCODE_FORMATS,
+        verbose: false,
+      });
+      scannerRef.current = scanner;
+
+      scanner
+        .start(
+          cameraIdToUse,
+          {
+            fps: 15,
+            qrbox: undefined,
+            aspectRatio: 1.333,
+            disableFlip: false,
+            videoConstraints: {
+              deviceId: cameraIdToUse ? { exact: cameraIdToUse } : undefined,
+              width: { ideal: 1280, min: 640 },
+              height: { ideal: 720, min: 480 },
+            },
           },
-        },
         (decodedText) => {
           const barcode = decodedText;
           scannerRef.current = null;
@@ -82,20 +86,24 @@ export function BarcodeScannerModal({ open, onClose, onScan }: BarcodeScannerMod
         },
         () => {}
       )
-      .then(() => setStarting(false))
-      .catch((err) => {
-        setError(err?.message ?? 'Impossible d\'accéder à la caméra. Vérifiez les autorisations.');
-        setStarting(false);
-        scanner.stop().catch(() => {});
-        scannerRef.current = null;
-      });
+        .then(() => setStarting(false))
+        .catch((err) => {
+          setError(err?.message ?? 'Impossible d\'accéder à la caméra. Vérifiez les autorisations.');
+          setStarting(false);
+          scanner.stop().catch(() => {});
+          scannerRef.current = null;
+        });
+    }, 400);
 
     return () => {
+      clearTimeout(timeoutId);
+      const current = scannerRef.current;
       scannerRef.current = null;
-      scanner
-        .stop()
-        .catch(() => {})
-        .finally(() => setStarting(false));
+      if (current) {
+        current.stop().catch(() => {}).finally(() => setStarting(false));
+      } else {
+        setStarting(false);
+      }
     };
   }, [open, selectedCameraId, containerId, onScan, onClose]);
 

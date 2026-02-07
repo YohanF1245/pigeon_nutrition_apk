@@ -1,0 +1,47 @@
+:root {
+  /* Thème Flutter Pigeon Nutrition */
+  --primary: #4B89DC;
+  --primary-dark: #4267B2;
+  --accent: #00B4D8;
+  --bg: #E6EEFF;
+  --surface: #ffffff;
+  --text: #1a1a1a;
+  --text-muted: #555;
+  --border: #d0d7e8;
+  --error: #c62828;
+  --calories: #1976d2;
+  --proteines: #c62828;
+  --lipides: #ef6c00;
+  --glucides: #2e7d32;
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+  color: var(--text);
+  background-color: var(--bg);
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+}
+
+#root {
+  min-height: 100vh;
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+}
+
+input, select, textarea {
+  font-family: inherit;
+}

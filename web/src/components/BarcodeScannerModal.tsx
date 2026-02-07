@@ -10,6 +10,11 @@ const BARCODE_FORMATS = [
   Html5QrcodeSupportedFormats.CODE_39,
 ];
 
+function preferredBackCameraId(cameras: { id: string; label: string }[]): string | null {
+  const back = cameras.find((c) => /back|arrière|environment|rear/i.test(c.label));
+  return back?.id ?? cameras[0]?.id ?? null;
+}
+
 interface BarcodeScannerModalProps {
   open: boolean;
   onClose: () => void;
@@ -22,9 +27,29 @@ export function BarcodeScannerModal({ open, onClose, onScan }: BarcodeScannerMod
   const [error, setError] = useState<string | null>(null);
   const [starting, setStarting] = useState(false);
   const [mirrorDisplay, setMirrorDisplay] = useState(true);
+  const [cameras, setCameras] = useState<{ id: string; label: string }[]>([]);
+  const [selectedCameraId, setSelectedCameraId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!open) return;
+    setError(null);
+    setCameras([]);
+    setSelectedCameraId(null);
+    Html5Qrcode.getCameras()
+      .then((list) => {
+        if (!list.length) {
+          setError('Aucune caméra trouvée.');
+          return;
+        }
+        const camList = list.map((c) => ({ id: c.id, label: c.label || `Caméra ${c.id.slice(0, 8)}` }));
+        setCameras(camList);
+        setSelectedCameraId(preferredBackCameraId(camList));
+      })
+      .catch(() => setError('Impossible de lister les caméras.'));
+  }, [open]);
+
+  useEffect(() => {
+    if (!open || !selectedCameraId) return;
 
     setError(null);
     setStarting(true);
@@ -34,38 +59,29 @@ export function BarcodeScannerModal({ open, onClose, onScan }: BarcodeScannerMod
     });
     scannerRef.current = scanner;
 
-    Html5Qrcode.getCameras()
-      .then((cameras) => {
-        if (!cameras.length) {
-          setError('Aucune caméra trouvée.');
-          setStarting(false);
-          return;
-        }
-        const preferred = cameras.find((c) => /back|arrière|environment/i.test(c.label));
-        const cameraId = preferred?.id ?? cameras[0].id;
-        return scanner.start(
-          cameraId,
-          {
-            fps: 15,
-            qrbox: undefined,
-            aspectRatio: 1.333,
-            disableFlip: false,
-            videoConstraints: {
-              width: { ideal: 1280, min: 640 },
-              height: { ideal: 720, min: 480 },
-            },
+    scanner
+      .start(
+        selectedCameraId,
+        {
+          fps: 15,
+          qrbox: undefined,
+          aspectRatio: 1.333,
+          disableFlip: false,
+          videoConstraints: {
+            width: { ideal: 1280, min: 640 },
+            height: { ideal: 720, min: 480 },
           },
-          (decodedText) => {
-            const barcode = decodedText;
-            scannerRef.current = null;
-            onClose();
-            requestAnimationFrame(() => {
-              onScan(barcode);
-            });
-          },
-          () => {}
-        );
-      })
+        },
+        (decodedText) => {
+          const barcode = decodedText;
+          scannerRef.current = null;
+          onClose();
+          requestAnimationFrame(() => {
+            onScan(barcode);
+          });
+        },
+        () => {}
+      )
       .then(() => setStarting(false))
       .catch((err) => {
         setError(err?.message ?? 'Impossible d\'accéder à la caméra. Vérifiez les autorisations.');
@@ -81,7 +97,7 @@ export function BarcodeScannerModal({ open, onClose, onScan }: BarcodeScannerMod
         .catch(() => {})
         .finally(() => setStarting(false));
     };
-  }, [open, containerId, onScan, onClose]);
+  }, [open, selectedCameraId, containerId, onScan, onClose]);
 
   if (!open) return null;
 
@@ -97,6 +113,23 @@ export function BarcodeScannerModal({ open, onClose, onScan }: BarcodeScannerMod
         <div className="modal-body">
           {error && (
             <p style={{ color: 'var(--error)', marginBottom: 12, fontSize: '0.9rem' }}>{error}</p>
+          )}
+          {cameras.length > 1 && (
+            <label style={{ display: 'block', marginBottom: 12, fontSize: '0.9rem' }}>
+              Caméra
+              <select
+                value={selectedCameraId ?? ''}
+                onChange={(e) => setSelectedCameraId(e.target.value || null)}
+                disabled={starting}
+                style={{ display: 'block', width: '100%', marginTop: 4, padding: 8, borderRadius: 6, border: '1px solid var(--border)', background: 'var(--bg)', color: 'var(--text)' }}
+              >
+                {cameras.map((cam) => (
+                  <option key={cam.id} value={cam.id}>
+                    {cam.label}
+                  </option>
+                ))}
+              </select>
+            </label>
           )}
           <div
             className={mirrorDisplay ? 'barcode-scanner-mirror' : ''}

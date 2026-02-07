@@ -1,0 +1,36 @@
+# À chaque push sur main, build l'app web et déploie sur GitHub Pages.
+# Tu n'as qu'à : commit → push. Le site se met à jour tout seul.
+
+name: Deploy on GitHub Pages
+
+on:
+  push:
+    branches: [main, develop]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+          cache-dependency-path: web/package-lock.json
+
+      - run: cd web && npm ci && npm run build:gh
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: web/dist
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment: github_pages
+    permissions:
+      pages: write
+      id-token: write
+    steps:
+      - uses: actions/deploy-pages@v4
